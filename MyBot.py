@@ -29,7 +29,7 @@ logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
 def whatDo(ship, blocked = []):
-  departure = me.shipyard == ship.position
+  departure = me.shipyard.position == ship.position
   ShipInfos[ship.id].Priority = -1
   wishDirection = Direction.Still
   for do in me.get_dropoffs():
