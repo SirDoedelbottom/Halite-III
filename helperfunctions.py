@@ -6,12 +6,18 @@ from hlt import constants
 from hlt.positionals import Direction
 import random
 import logging
+#import MyBot
 
-def ShortestPath( ShipPos, DestPos ):
+def ShortestPath( game_map, ShipPos, DestPos ):
   MoveQueue=[]
   diffX = DestPos.x - ShipPos.x
   diffY = DestPos.y - ShipPos.y
 
+  if abs(diffX - game_map.width) < abs(diffX):
+    diffX -= game_map.width
+  if abs(diffY - game_map.height) < abs(diffY):
+    diffY -= game_map.height
+    
   for i in range(abs(diffX)):
     if diffX < 0:
       MoveQueue.append(Direction.West)  

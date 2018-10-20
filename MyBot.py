@@ -8,6 +8,8 @@ import random
 import logging
 from helperfunctions import *
 
+
+
 """ <<<Game Begin>>> """
 game = hlt.Game()
 
@@ -35,7 +37,7 @@ while True:
     #   Else, collect halite.
     if ship.halite_amount >= 600 or ShipInfos[ship.id].ReturnHome:  # return home!
       ShipInfos[ship.id].ReturnHome = True
-      MoveQueue = ShortestPath( ship.position, me.shipyard.position )
+      MoveQueue = ShortestPath( game_map, ship.position, me.shipyard.position )
       if not MoveQueue:
         logging.info("Not returning home anymore")
         ShipInfos[ship.id].ReturnHome = False
