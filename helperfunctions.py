@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Python 3.6
 
-import hlt
+import gc
 from hlt import constants
 from hlt.positionals import Direction
 import random
 import logging
+
 #import MyBot
 
 def ShortestPath( game_map, ShipPos, DestPos ):
