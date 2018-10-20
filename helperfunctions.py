@@ -14,14 +14,14 @@ def ShortestPath( ShipPos, DestPos ):
 
   for i in range(abs(diffX)):
     if diffX < 0:
-      MoveQueue.append(Direction.West)  # switch to East if neccessary
+      MoveQueue.append(Direction.West)  
     else:
-      MoveQueue.append(Direction.East)  # switch to West if neccessary
+      MoveQueue.append(Direction.East) 
   for i in range(abs(diffY)):
     if diffY < 0:
-      MoveQueue.append(Direction.North)  # switch to North if neccessary
+      MoveQueue.append(Direction.North)
     else:
-      MoveQueue.append(Direction.South)  # switch to South if neccessary
+      MoveQueue.append(Direction.South)
   return MoveQueue
 
 
