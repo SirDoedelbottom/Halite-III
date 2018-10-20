@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # Python 3.6
 
-#import hlt
 import hlt
 from hlt import constants
 from hlt.positionals import Direction
 import random
 import logging
-import helperfunctions
+import helperfunctions as hf
 import helperfunctions2
+import numpy as np
 from enum import Enum     # for enum34, or the stdlib version
 
 
@@ -29,33 +29,42 @@ ShipState = Enum('ShipState', 'north east south west returnHome harvest')
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
-
-#ShipInfos={}
-def StateMachine(CQueue, state, ship):
+def StateMachine(state, ship):
+  departure = me.shipyard == ship.position
+  ShipInfos[ship.id].Priority == -1
+  for do in me.get_dropoffs()
+    if do.position == ship.position
+      departure = true
+  if departure
+    ShipInfos[ship.id].Priority = 3
   if state == ShipState.north:
-    map_cell.mark_unsafe(ship)
-    game_map.naive_navigate(ship, destination)
-    CQueue.append( ship.move(Direction.North))
-    pass
+    if ShipInfos[ship.id].Priority == -1
+      ShipInfos[ship.id].Priority = 0
+    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.North), collisionMap)
   elif state == ShipState.east:
-    CQueue.append( ship.move(Direction.East))
-    pass
+    if ShipInfos[ship.id].Priority == -1
+      ShipInfos[ship.id].Priority = 0
+    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.East), collisionMap)
   elif state == ShipState.south:
-    CQueue.append( ship.move(Direction.South))
-    pass
+    if ShipInfos[ship.id].Priority == -1
+      ShipInfos[ship.id].Priority = 0
+    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.South), collisionMap)
   elif state == ShipState.west:
-    CQueue.append( ship.move(Direction.West))
-    pass
+    if ShipInfos[ship.id].Priority == -1
+      ShipInfos[ship.id].Priority = 0
+    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.West), collisionMap)
   elif state == ShipState.returnHome:
+    ShipInfos[ship.id].Priority = 2
     ShipInfos[ship.id].ReturnHome = True
-    MoveQueue = helperfunctions.ShortestPath( game_map, ship.position, me.shipyard.position )
+    MoveQueue = hf.ShortestPath( game_map, ship.position, me.shipyard.position )
     if not MoveQueue:
       logging.info("Not returning home anymore")
       ShipInfos[ship.id].ReturnHome = False
     else:
-      CQueue.append( ship.move( MoveQueue[0] ))
+      hf.SetWishPos(ship.id,ship.position.directional_offset(MoveQueue[0]), collisionMap)
   elif state == ShipState.harvest:
-    pass
+    if ShipInfos[ship.id].Priority == -1
+      ShipInfos[ship.id].Priority = 1
 
 
 while True:
@@ -64,7 +73,8 @@ while True:
   game_map = game.game_map
   command_queue = []
   helperfunctions.RefreshDict( ShipInfos, me.get_ships() )
-  
+  collisionMap = np.zeros((game.game_map.width,game.game_map.height,5))
+
 
   for ship in me.get_ships():
     # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
@@ -75,6 +85,10 @@ while True:
       command_queue.append( ship.move( RndDirection ) )
     else:
       command_queue.append(ship.stay_still())
+  conflicts = {}
+  if(!hf.ResolveCollisionMap(collisionMap,conflicts,ShipInfos))
+    for key in conflicts
+    #call new decision function
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
