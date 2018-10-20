@@ -108,8 +108,8 @@ def SetWishPos(shipID, pos, colMap):
 
 def ResolveCollisionMap (colMap,conflicts,ShipInfos):
   newConflict = False
-  for x in range(colMap.shape(0)):
-    for y in range(colMap.shape(1)):
+  for x in range(colMap.shape[0]):
+    for y in range(colMap.shape[1]):
         if colMap[x][y][1] !=0:
           XYConflict = colMap[x][y]
           np.trim_zeros(XYConflict, 'b')

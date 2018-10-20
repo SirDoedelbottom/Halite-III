@@ -7,7 +7,6 @@ from hlt.positionals import Direction
 import random
 import logging
 import helperfunctions as hf
-import helperfunctions2
 import numpy as np
 from enum import Enum     # for enum34, or the stdlib version
 
@@ -85,7 +84,7 @@ while True:
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-  if game.turn_number <= 300 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied and collisionMap[me.position.x][me.position.x][0]==0:
+  if game.turn_number <= 300 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied and collisionMap[me.shipyard.position.x][me.shipyard.position.x][0]==0:
     command_queue.append(me.shipyard.spawn())
 
   game.end_turn(command_queue)
