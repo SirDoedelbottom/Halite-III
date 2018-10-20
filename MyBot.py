@@ -29,42 +29,73 @@ ShipState = Enum('ShipState', 'north east south west returnHome harvest')
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
-def StateMachine(state, ship):
+def whatDo(ship, blocked = [])
   departure = me.shipyard == ship.position
   ShipInfos[ship.id].Priority = -1
+  wishDirection = Direction.Still
   for do in me.get_dropoffs():
     if do.position == ship.position:
       departure = True
-  if departure:
-    ShipInfos[ship.id].Priority = 3
-  if state == ShipState.north:
-    if ShipInfos[ship.id].Priority == -1:
-      ShipInfos[ship.id].Priority = 0
-    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.North), collisionMap)
-  elif state == ShipState.east:
-    if ShipInfos[ship.id].Priority == -1:
-      ShipInfos[ship.id].Priority = 0
-    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.East), collisionMap)
-  elif state == ShipState.south:
-    if ShipInfos[ship.id].Priority == -1:
-      ShipInfos[ship.id].Priority = 0
-    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.South), collisionMap)
-  elif state == ShipState.west:
-    if ShipInfos[ship.id].Priority == -1:
-      ShipInfos[ship.id].Priority = 0
-    hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.West), collisionMap)
-  elif state == ShipState.returnHome:
-    ShipInfos[ship.id].Priority = 2
-    ShipInfos[ship.id].ReturnHome = True
-    MoveQueue = hf.ShortestPath( game_map, ship.position, me.shipyard.position )
-    if not MoveQueue:
       logging.info("Not returning home anymore")
       ShipInfos[ship.id].ReturnHome = False
-    else:
-      hf.SetWishPos(ship.id,ship.position.directional_offset(MoveQueue[0]), collisionMap)
-  elif state == ShipState.harvest:
+#reissue path finding or set return home false earlier
+
+  if departure:
+    ShipInfos[ship.id].Priority = 3
+
+  if ship.halite_amount >= 900 or ShipInfos[ship.id].ReturnHome:  # return home!
+    ShipInfos[ship.id].Priority = 2
+    wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, me.shipyard.position,blocked )
+    hf.SetWishPos(ship.id,ship.position.directional_offset(MoveDirection), collisionMap)
+  else
+    wishSpot = hf.FindClosestValidSpot(game_map,ship.position,15,blocked)
+    wishDirection = FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked)
     if ShipInfos[ship.id].Priority == -1:
-      ShipInfos[ship.id].Priority = 1
+      if wishDirection == Direction.Still:
+        ShipInfos[ship.id].Priority = 1
+      else:
+        ShipInfos[ship.id].Priority = 0
+    hf.SetWishPos(ship.id,ship.position.directional_offset(wishDirection), collisionMap)
+  ShipInfos[ship.id].Direction = wishDirection
+
+
+
+# def StateMachine(state, ship):
+#   departure = me.shipyard == ship.position
+#   ShipInfos[ship.id].Priority = -1
+#   for do in me.get_dropoffs():
+#     if do.position == ship.position:
+#       departure = True
+#       logging.info("Not returning home anymore")
+#       ShipInfos[ship.id].ReturnHome = False
+# #reissue path finding or set return home false earlier
+
+#   if departure:
+#     ShipInfos[ship.id].Priority = 3
+#   if state == ShipState.north:
+#     if ShipInfos[ship.id].Priority == -1:
+#       ShipInfos[ship.id].Priority = 0
+#     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.North), collisionMap)
+#   elif state == ShipState.east:
+#     if ShipInfos[ship.id].Priority == -1:
+#       ShipInfos[ship.id].Priority = 0
+#     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.East), collisionMap)
+#   elif state == ShipState.south:
+#     if ShipInfos[ship.id].Priority == -1:
+#       ShipInfos[ship.id].Priority = 0
+#     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.South), collisionMap)
+#   elif state == ShipState.west:
+#     if ShipInfos[ship.id].Priority == -1:
+#       ShipInfos[ship.id].Priority = 0
+#     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.West), collisionMap)
+#   elif state == ShipState.returnHome:
+#     ShipInfos[ship.id].Priority = 2
+#     ShipInfos[ship.id].ReturnHome = True
+#     MoveDirection = hf.FindCheapestShortestRoute( game_map, ship.position, me.shipyard.position )
+#     hf.SetWishPos(ship.id,ship.position.directional_offset(MoveDirection), collisionMap)
+#   elif state == ShipState.harvest:
+#     if ShipInfos[ship.id].Priority == -1:
+#       ShipInfos[ship.id].Priority = 1
 
 
 """ <<<Game Loop>>> """
@@ -82,23 +113,18 @@ while True:
 
 
   for ship in me.get_ships():
-    # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
-    #   Else, collect halite.
-    if ship.halite_amount >= 600 or ShipInfos[ship.id].ReturnHome:  # return home!
-      StateMachine(ShipState.returnHome,ship)
-    elif game_map[ship.position].halite_amount < constants.MAX_HALITE / 10:
-      command_queue.append( ship.move( RndDirection ) )
-    else:
-      command_queue.append(ship.stay_still())
+    whatDo(ship)
   conflicts = {}
-  if not hf.ResolveCollisionMap(collisionMap,conflicts,ShipInfos):
+  if hf.ResolveCollisionMap(collisionMap,conflicts,ShipInfos):
     for key in conflicts:
-      pass
-    #call new decision function
+      whatDo(me.ge(key),conflicts[key])
+  else:
+      for ship in me.get_ships():
+        command_queue.append(ship.MoveDirection(ShipInfos[ship.id].Direction))
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-  if len(me.get_ships())==0 and game.turn_number <= 200 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
+  if game.turn_number <= 300 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied and collisionMap[me.position.x][me.position.x][0]==0:
     command_queue.append(me.shipyard.spawn())
 
   game.end_turn(command_queue)
