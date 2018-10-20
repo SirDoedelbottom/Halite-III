@@ -31,26 +31,26 @@ logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 """ <<<Game Loop>>> """
 def StateMachine(state, ship):
   departure = me.shipyard == ship.position
-  ShipInfos[ship.id].Priority == -1
-  for do in me.get_dropoffs()
-    if do.position == ship.position
-      departure = true
-  if departure
+  ShipInfos[ship.id].Priority = -1
+  for do in me.get_dropoffs():
+    if do.position == ship.position:
+      departure = True
+  if departure:
     ShipInfos[ship.id].Priority = 3
   if state == ShipState.north:
-    if ShipInfos[ship.id].Priority == -1
+    if ShipInfos[ship.id].Priority == -1:
       ShipInfos[ship.id].Priority = 0
     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.North), collisionMap)
   elif state == ShipState.east:
-    if ShipInfos[ship.id].Priority == -1
+    if ShipInfos[ship.id].Priority == -1:
       ShipInfos[ship.id].Priority = 0
     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.East), collisionMap)
   elif state == ShipState.south:
-    if ShipInfos[ship.id].Priority == -1
+    if ShipInfos[ship.id].Priority == -1:
       ShipInfos[ship.id].Priority = 0
     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.South), collisionMap)
   elif state == ShipState.west:
-    if ShipInfos[ship.id].Priority == -1
+    if ShipInfos[ship.id].Priority == -1:
       ShipInfos[ship.id].Priority = 0
     hf.SetWishPos(ship.id,ship.position.directional_offset(Direction.West), collisionMap)
   elif state == ShipState.returnHome:
@@ -63,7 +63,7 @@ def StateMachine(state, ship):
     else:
       hf.SetWishPos(ship.id,ship.position.directional_offset(MoveQueue[0]), collisionMap)
   elif state == ShipState.harvest:
-    if ShipInfos[ship.id].Priority == -1
+    if ShipInfos[ship.id].Priority == -1:
       ShipInfos[ship.id].Priority = 1
 
 
@@ -77,7 +77,7 @@ while True:
   me = game.me
   game_map = game.game_map
   command_queue = []
-  helperfunctions.RefreshDict( ShipInfos, me.get_ships() )
+  hf.RefreshDict( ShipInfos, me.get_ships() )
   collisionMap = np.zeros((game.game_map.width,game.game_map.height,5))
 
 
@@ -85,14 +85,15 @@ while True:
     # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
     #   Else, collect halite.
     if ship.halite_amount >= 600 or ShipInfos[ship.id].ReturnHome:  # return home!
-      StateMachine(command_queue,ShipState.returnHome,ship)
+      StateMachine(ShipState.returnHome,ship)
     elif game_map[ship.position].halite_amount < constants.MAX_HALITE / 10:
       command_queue.append( ship.move( RndDirection ) )
     else:
       command_queue.append(ship.stay_still())
   conflicts = {}
-  if(!hf.ResolveCollisionMap(collisionMap,conflicts,ShipInfos))
-    for key in conflicts
+  if not hf.ResolveCollisionMap(collisionMap,conflicts,ShipInfos):
+    for key in conflicts:
+      pass
     #call new decision function
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
