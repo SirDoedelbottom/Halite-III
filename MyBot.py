@@ -28,8 +28,6 @@ ShipState = Enum('ShipState', 'north east south west returnHome harvest')
 
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
-""" <<<Game Loop>>> """
-
 #ShipInfos={}
 def StateMachine(CQueue, state, ship):
   if state == ShipState.north:
@@ -58,8 +56,13 @@ def StateMachine(CQueue, state, ship):
     pass
 
 
+""" <<<Game Loop>>> """
+
 while True:
   game.update_frame()
+
+  logging.info(game)
+
   me = game.me
   game_map = game.game_map
   command_queue = []
