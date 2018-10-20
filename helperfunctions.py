@@ -24,7 +24,6 @@ def ShortestPath( ShipPos, DestPos ):
       MoveQueue.append(Direction.South)
   return MoveQueue
 
-
 class ShipInfo:
   def __init__(self):
     self.ReturnHome = False
