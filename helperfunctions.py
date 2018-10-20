@@ -3,6 +3,7 @@
 import hlt
 from hlt import constants
 from hlt.positionals import Direction
+from hlt.positionals import Position
 import random
 import logging
 import numpy as np
@@ -46,24 +47,29 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """
   BestSpot = ShipPos                  # default: stay still
   for dist in range(max_dist):     # iterate over distances
+    logging.info("Distance = " + str(dist))
     # get Spots with this range
     Spots = []
-    for i in range(dist):
-      Spots.append( ShipPos.directional_offset( (i,dist-i) ) )
-      Spots.append( ShipPos.directional_offset( (-i,-dist+i) ) )
+    for i in range(dist+1):
+      # CAUTION: dir_offset might not work with i>1!!
+      Spots.append( game_map.normalize(Position(ShipPos.x+i,ShipPos.y+dist-i)) )
+      Spots.append( game_map.normalize(Position(ShipPos.x-i,ShipPos.y-dist+i)) )
     # check Halite threshold on Spots
     max_amount = -1
+    Found = False
     for Spot in Spots:
       if game_map[game_map.normalize(Spot)].halite_amount >= max(threshold,max_amount) and Spot not in InvalidSpots:
         BestSpot = Spot
         max_amount = game_map[game_map.normalize(Spot)].halite_amount
-    if BestSpot != ShipPos:
-      break
+        Found = True
+    if Found == True:
+      return BestSpot
   return BestSpot
+  
 
 def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
   """ Find the Cheapest Route, but only out of the shortest Routes. (Don't even consider non-shortest Routes) """
-  VisitedSpots = [(ShipPos, ShipPos, 0)]   # (Position, BestPrev, BestCost)
+  VisitedSpots = []   # (Position, BestPrev, BestCost)
   candidates = [(ShipPos, ShipPos, 0)]
   if ShipPos == DestPos:
     return Direction.Still
@@ -72,9 +78,12 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
     current = candidates.pop(0)
     VisitedSpots.append(current)
     tempCandidatesDir = game_map.get_unsafe_moves(current[0], DestPos)
+    logging.info("possible directions: " + str(tempCandidatesDir))
     tempCandidates = []
     for tc in tempCandidatesDir:
       tempCandidates.append(current[0].directional_offset(tc))
+    logging.info("Temp Candidates:" + str(tempCandidates))
+    logging.info("Invalid Spots: " + str(InvalidSpots))
     for tC in tempCandidates:
       cost = game_map[tC].halite_amount/10 + current[2]
       if tC not in InvalidSpots:
@@ -84,20 +93,32 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
             nominated = True
             if no[2] > cost:
               candidates.remove(no)
-              candidates.append((tC,current,cost))
+              candidates.append((tC,current[0],cost))
             break 
         if not nominated:
-          candidates.append((tC,current,cost))
+          candidates.append((tC,current[0],cost))
+      else:
+        return Direction.Still
+    logging.info("Candidates: " + str(candidates))
+
   curNode = VisitedSpots[-1]
   path =[]
+  logging.info("currentNode: " + str(curNode[0]))
+  logging.info("Destination: " + str(DestPos))
+  logging.info("VisitedSpots: " + str(VisitedSpots))
   while curNode[0]!=ShipPos:
     path.insert(0,curNode[0])
     for VS in VisitedSpots:
       if VS[0] == curNode[1]:
         curNode = VS
-  return game_map.get_unsafe_moves(path[0], path[1])
+  #path.insert(0,curNode[0])
+  logging.info("Path: " + str(path))
+  logging.info("ShipPos: " + str(ShipPos))
+  logging.info("Move this Direction: " + str(game_map.get_unsafe_moves(ShipPos, path[0])[0]))
+  return game_map.get_unsafe_moves(ShipPos, path[0])[0]
 
 def SetWishPos(shipID, pos, colMap):
+  
   i = 0
   while i > -1:
     if colMap[pos.x][pos.y][i] == 0:
@@ -112,20 +133,25 @@ def ResolveCollisionMap (colMap,conflicts,ShipInfos):
     for y in range(colMap.shape[1]):
         if colMap[x][y][1] !=0:
           XYConflict = colMap[x][y]
-          np.trim_zeros(XYConflict, 'b')
+          XYConflict = np.trim_zeros(XYConflict, 'b')
+          XYConflict = [int(i) for i in XYConflict]
           HPSID = 0
           highestPrio = -1
-          for i in range(XYConflict):
-            currentPrio = ShipInfos[XYConflict[i]].Priority
+          for i in XYConflict:
+            currentPrio = ShipInfos[i].Priority
             if currentPrio > highestPrio:
               highestPrio = currentPrio
-              HPSID = XYConflict[i]
+              HPSID = i
           colMap[x][y][0] = HPSID
-          for i in range(0,XYConflict):
-            if i > 0:
-              colMap[x][y][i] = 0
-            if XYConflict[i] != HPSID:
-              conflicts[colMap[x][y][i]].append((x,y))
+          h = 0
+          for i in XYConflict:
+            if h != 0:
+              colMap[x][y][h] = 0
+            h+=1
+            if i != HPSID:
+              if not i in conflicts:
+                conflicts[i] = []
+              conflicts[i].append(Position(x,y))
               newConflict = True
   if newConflict:
     return True

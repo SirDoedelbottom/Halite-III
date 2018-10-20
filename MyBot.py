@@ -4,6 +4,7 @@
 import hlt
 from hlt import constants
 from hlt.positionals import Direction
+from hlt.positionals import Position
 import random
 import logging
 import helperfunctions as hf
@@ -38,14 +39,13 @@ def whatDo(ship, blocked = []):
 
   if departure:
     ShipInfos[ship.id].Priority = 3
-    logging.info("Not returning home anymore")
     ShipInfos[ship.id].ReturnHome = False
 
 
   if ship.halite_amount >= 900 or ShipInfos[ship.id].ReturnHome:  # return home!
     ShipInfos[ship.id].Priority = 2
     wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, me.shipyard.position,blocked )
-    hf.SetWishPos(ship.id,ship.position.directional_offset(wishDirection), collisionMap)
+    hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
     ShipInfos[ship.id].ReturnHome = True
   else:
     wishSpot = hf.FindClosestValidSpot(game_map,ship.position,15,blocked)
@@ -55,7 +55,7 @@ def whatDo(ship, blocked = []):
         ShipInfos[ship.id].Priority = 1 
       else:
         ShipInfos[ship.id].Priority = 0
-    hf.SetWishPos(ship.id,ship.position.directional_offset(wishDirection), collisionMap)
+    hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
   ShipInfos[ship.id].Direction = wishDirection
 
 """ <<<Game Loop>>> """
@@ -63,7 +63,6 @@ def whatDo(ship, blocked = []):
 while True:
   game.update_frame()
 
-  logging.info(game)
 
   me = game.me
   game_map = game.game_map
@@ -76,11 +75,12 @@ while True:
     whatDo(ship)
   conflicts = {}
   if hf.ResolveCollisionMap(collisionMap,conflicts,ShipInfos):
+    logging.info("Resolving Conflicts: " + str(conflicts))
     for key in conflicts:
-      whatDo(me.ge(key),conflicts[key])
+      whatDo(me.get_ship(key),conflicts[key])
   else:
       for ship in me.get_ships():
-        command_queue.append(ship.MoveDirection(ShipInfos[ship.id].Direction))
+        command_queue.append(ship.move(ShipInfos[ship.id].Direction))
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
@@ -88,7 +88,5 @@ while True:
     command_queue.append(me.shipyard.spawn())
 
   game.end_turn(command_queue)
-
-
 
 
