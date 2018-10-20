@@ -33,7 +33,7 @@ class ShipInfo:
   def __init__(self):
     self.ReturnHome = False
     self.Priority = 0
-    #self.Task = ShipState.harvest
+    self.Direction = Direction.Still
 
 def RefreshDict( Dict, hltShips ):
   for ship in hltShips:
@@ -121,6 +121,6 @@ def ResolveCollisionMap (colMap,conflicts,ShipInfos):
               conflicts[colMap[x][y][i]].append((x,y))
               newConflict = True
   if newConflict:
-    return False
-  else:
     return True
+  else:
+    return False
