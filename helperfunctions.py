@@ -88,6 +88,13 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
             break
         if not nominated:
           candidates.append((tC,current,cost))
+  curNode = VisitedSpots[-1]
+  path =[]
+  while curNode[0]!=ShipPos:
+    path.insert(0,curNode[0])
+    for VS in VisitedSpots:
+      if VS[0] == curNode[1]:
+        curNode = VS
 
 
 def SetWishPos(shipID, pos, colMap):
