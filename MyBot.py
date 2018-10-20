@@ -7,6 +7,8 @@ from hlt.positionals import Direction
 import random
 import logging
 from helperfunctions import *
+from helperfunctions2 import *
+from ShipStateMachine import *
 
 """ <<<Game Begin>>> """
 game = hlt.Game()
@@ -34,13 +36,7 @@ while True:
     # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
     #   Else, collect halite.
     if ship.halite_amount >= 600 or ShipInfos[ship.id].ReturnHome:  # return home!
-      ShipInfos[ship.id].ReturnHome = True
-      MoveQueue = ShortestPath( ship.position, me.shipyard.position )
-      if not MoveQueue:
-        logging.info("Not returning home anymore")
-        ShipInfos[ship.id].ReturnHome = False
-      else:
-        command_queue.append( ship.move( MoveQueue[0] ))
+      StateMachine(command_queue,ShipState.ReturnHome)
     elif game_map[ship.position].halite_amount < constants.MAX_HALITE / 10:
       command_queue.append( ship.move( RndDirection ) )
     else:
