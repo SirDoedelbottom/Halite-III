@@ -45,7 +45,7 @@ def RefreshDict( Dict, hltShips ):
 def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], threshold = 100 ):
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """
   BestSpot = ShipPos                  # default: stay still
-  for dist in range(1, max_dist):     # iterate over distances
+  for dist in range(max_dist):     # iterate over distances
     # get Spots with this range
     Spots = []
     for i in range(dist):
@@ -63,16 +63,32 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
 
 def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
   """ Find the Cheapest Route, but only out of the shortest Routes. (Don't even consider non-shortest Routes) """
-  # define rectangle from Start to Destination:
-  diffX = DestPos.x - ShipPos.x
-  diffY = DestPos.y - ShipPos.y
-  if abs(diffX - game_map.width) < abs(diffX):
-    diffX -= game_map.width
-  if abs(diffY - game_map.height) < abs(diffY):
-    diffY -= game_map.height
-  for dist in range(1, game_map.calculate_distance(ShipPos, DestPos)):
-    # evaluate all Spots with dist and possibly add to "to_process_list"
-    pass
+  VisitedSpots = [(ShipPos, ShipPos, 0)]   # (Position, BestPrev, BestCost)
+  candidates = [(ShipPos, ShipPos, 0)]
+  if ShipPos == DestPos:
+    return Direction.Still
+  # evaluate all Spots with dist and possibly add to "to_process_list"
+  while len (candidates) !=0:
+    current = candidates.pop(0)
+    VisitedSpots.append(current)
+    tempCandidatesDir = game_map.get_unsafe_moves(current[0], DestPos)
+    tempCandidates = []
+    for tc in tempCandidatesDir:
+      tempCandidates.append(current[0].directional_offset(tc))
+    for tC in tempCandidates:
+      cost = game_map[tC].halite_amount/10 + current[2]
+      if tC not in InvalidSpots:
+        nominated = False
+        for no in candidates:
+          if no[0] == tC:
+            nominated = True
+            if no[2] > cost:
+              candidates.remove(no)
+              candidates.append((tC,current,cost))
+            break
+        if not nominated:
+          candidates.append((tC,current,cost))
+
 
 def SetWishPos(shipID, pos, colMap):
   i = 0
