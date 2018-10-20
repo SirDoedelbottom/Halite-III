@@ -33,12 +33,18 @@ logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 #ShipInfos={}
 def StateMachine(CQueue, state, ship):
   if state == ShipState.north:
+    map_cell.mark_unsafe(ship)
+    game_map.naive_navigate(ship, destination)
+    CQueue.append( ship.move(Direction.North))
     pass
   elif state == ShipState.east:
+    CQueue.append( ship.move(Direction.East))
     pass
   elif state == ShipState.south:
+    CQueue.append( ship.move(Direction.South))
     pass
   elif state == ShipState.west:
+    CQueue.append( ship.move(Direction.West))
     pass
   elif state == ShipState.returnHome:
     ShipInfos[ship.id].ReturnHome = True
