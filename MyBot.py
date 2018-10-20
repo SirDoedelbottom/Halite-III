@@ -29,7 +29,7 @@ ShipState = Enum('ShipState', 'north east south west returnHome harvest')
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
-def whatDo(ship, blocked = [])
+def whatDo(ship, blocked = []):
   departure = me.shipyard == ship.position
   ShipInfos[ship.id].Priority = -1
   wishDirection = Direction.Still
@@ -46,14 +46,14 @@ def whatDo(ship, blocked = [])
   if ship.halite_amount >= 900 or ShipInfos[ship.id].ReturnHome:  # return home!
     ShipInfos[ship.id].Priority = 2
     wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, me.shipyard.position,blocked )
-    hf.SetWishPos(ship.id,ship.position.directional_offset(MoveDirection), collisionMap)
+    hf.SetWishPos(ship.id,ship.position.directional_offset(wishDirection), collisionMap)
     ShipInfos[ship.id].ReturnHome = True
-  else
+  else:
     wishSpot = hf.FindClosestValidSpot(game_map,ship.position,15,blocked)
-    wishDirection = FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked)
+    wishDirection = hf.FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked)
     if ShipInfos[ship.id].Priority == -1:
       if wishDirection == Direction.Still:
-        ShipInfos[ship.id].Priority = 1
+        ShipInfos[ship.id].Priority = 1 
       else:
         ShipInfos[ship.id].Priority = 0
     hf.SetWishPos(ship.id,ship.position.directional_offset(wishDirection), collisionMap)
