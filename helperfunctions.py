@@ -31,6 +31,8 @@ def ShortestPath( game_map, ShipPos, DestPos ):
 class ShipInfo:
   def __init__(self):
     self.ReturnHome = False
+    self.Priority = 0
+    self.Task
 
 def RefreshDict( Dict, hltShips ):
   for ship in hltShips:
@@ -70,3 +72,37 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
   for dist in range(1, calculate_distance(ShipPos, DestPos)):
     # evaluate all Spots with dist and possibly add to "to_process_list"
     
+def SetWishPos(shipID, pos, colMap):
+  i = 0
+  while i > -1
+    if colMap[pos.x][pos.y][i] == 0
+      colMap[pos.x][pos.y][i] = shipID
+      i = -1
+    else
+      i++
+
+def ResolveCollisionMap (colMap,conflicts,ShipInfos)
+  newConflict = false
+  for x in range(colMap.shape(0)):
+    for y in range(colMap.shape(1)):
+        if colMap[x][y][1] !=0
+          XYConflict = colMap[x][y]
+          np.trim_zeros(XYConflict, 'b')
+          HPSID = 0
+          highestPrio = -1
+          for i in range(XYConflict)
+            currentPrio = ShipInfos[XYConflict[i]].Priority
+            if currentPrio > highestPrio
+              highestPrio = currentPrio
+              HPSID = XYConflict[i]
+          colMap[x][y][0] = HPSID
+          for i in range(0,XYConflict)
+            if i > 0
+              colMap[x][y][i] = 0
+            if XYConflict[i] != HPSID
+              conflicts[colMap[x][y][i]].append((x,y))
+              newConflict = true
+  if newConflict
+    return false
+  else
+    return true
