@@ -43,11 +43,10 @@ def RefreshDict( Dict, hltShips ):
       Dict[ship.id]=ShipInfo()
 
 
-def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], threshold = 100 ):
+def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], threshold = 75 ):
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """
-  BestSpot = ShipPos                  # default: stay still
+  BestSpot = False               # default: stay still
   for dist in range(max_dist):     # iterate over distances
-    logging.info("Distance = " + str(dist))
     # get Spots with this range
     Spots = []
     for i in range(dist+1):
@@ -64,6 +63,9 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
         Found = True
     if Found == True:
       return BestSpot
+  if not BestSpot:
+    logging.info("No Valid Spot found for Ship with ID: " + str(game_map[ShipPos].ship.id))
+    return FindClosestValidSpot(game_map, ShipPos, max_dist+3, InvalidSpots, threshold*0.67)
   return BestSpot
   
 
@@ -78,12 +80,9 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
     current = candidates.pop(0)
     VisitedSpots.append(current)
     tempCandidatesDir = game_map.get_unsafe_moves(current[0], DestPos)
-    logging.info("possible directions: " + str(tempCandidatesDir))
     tempCandidates = []
     for tc in tempCandidatesDir:
       tempCandidates.append(current[0].directional_offset(tc))
-    logging.info("Temp Candidates:" + str(tempCandidates))
-    logging.info("Invalid Spots: " + str(InvalidSpots))
     for tC in tempCandidates:
       cost = game_map[tC].halite_amount/10 + current[2]
       if tC not in InvalidSpots:
@@ -98,30 +97,67 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
         if not nominated:
           candidates.append((tC,current[0],cost))
       else:
-        return Direction.Still
-    logging.info("Candidates: " + str(candidates))
-
+        pass
   curNode = VisitedSpots[-1]
   path =[]
-  logging.info("currentNode: " + str(curNode[0]))
-  logging.info("Destination: " + str(DestPos))
-  logging.info("VisitedSpots: " + str(VisitedSpots))
   while curNode[0]!=ShipPos:
     path.insert(0,curNode[0])
     for VS in VisitedSpots:
       if VS[0] == curNode[1]:
         curNode = VS
   #path.insert(0,curNode[0])
-  logging.info("Path: " + str(path))
-  logging.info("ShipPos: " + str(ShipPos))
-  logging.info("Move this Direction: " + str(game_map.get_unsafe_moves(ShipPos, path[0])[0]))
+  if len(path) == 0:
+    if ShipPos in InvalidSpots:
+      if ShipPos.x == DestPos.x:
+        EastSpot = ShipPos.directional_offset(Direction.East)
+        WestSpot = ShipPos.directional_offset(Direction.West)
+        if WestSpot not in InvalidSpots and EastSpot not in InvalidSpots:
+          if game_map[ EastSpot].halite_amount > game_map[WestSpot].halite_amount:
+            return Direction.East
+          else:
+            return Direction.West
+        elif WestSpot not in InvalidSpots:
+          return Direction.West
+        elif EastSpot not in InvalidSpots:
+          return Direction.East
+        else: # back it up
+          BackDir = Direction.Still
+          if ShipPos.y > DestPos.y:
+            BackDir = Direction.South
+          else:
+            BackDir = Direction.North
+          if ShipPos.directional_offset(BackDir) not in InvalidSpots:
+            return BackDir
+      elif ShipPos.y == DestPos.y:
+        SouthSpot = ShipPos.directional_offset(Direction.South)
+        NorthSpot = ShipPos.directional_offset(Direction.North)
+        if SouthSpot not in InvalidSpots and NorthSpot not in InvalidSpots:
+          if game_map[ SouthSpot].halite_amount > game_map[NorthSpot].halite_amount:
+            return Direction.South
+          else:
+            return Direction.North
+        elif NorthSpot not in InvalidSpots:
+          return Direction.North
+        elif SouthSpot not in InvalidSpots:
+          return Direction.South
+        else: # back it up
+          BackDir = Direction.Still
+          if ShipPos.x > DestPos.x:
+            BackDir = Direction.East
+          else:
+            BackDir = Direction.West
+          if ShipPos.directional_offset(BackDir) not in InvalidSpots:
+            return BackDir
+    else:
+      return Direction.Still
+    return Direction.Still
   return game_map.get_unsafe_moves(ShipPos, path[0])[0]
 
 def SetWishPos(shipID, pos, colMap):
   
   i = 0
   while i > -1:
-    if colMap[pos.x][pos.y][i] == 0:
+    if colMap[pos.x][pos.y][i] == -1:
       colMap[pos.x][pos.y][i] = shipID
       i = -1
     else:
@@ -131,10 +167,16 @@ def ResolveCollisionMap (colMap,conflicts,ShipInfos):
   newConflict = False
   for x in range(colMap.shape[0]):
     for y in range(colMap.shape[1]):
-        if colMap[x][y][1] !=0:
+        if colMap[x][y][1] != -1:
           XYConflict = colMap[x][y]
-          XYConflict = np.trim_zeros(XYConflict, 'b')
-          XYConflict = [int(i) for i in XYConflict]
+          #XYConflict = np.trim_zeros(XYConflict, 'b')
+          XYConflict = np.array([int(i) for i in XYConflict])
+          logging.info(XYConflict)
+          try:
+            FirstNegIdx = np.where(XYConflict == -1)[0][0]
+          except IndexError:
+            FirstNegIdx = XYConflict.shape[0]
+          XYConflict = XYConflict[0:FirstNegIdx]
           HPSID = 0
           highestPrio = -1
           for i in XYConflict:
@@ -146,7 +188,7 @@ def ResolveCollisionMap (colMap,conflicts,ShipInfos):
           h = 0
           for i in XYConflict:
             if h != 0:
-              colMap[x][y][h] = 0
+              colMap[x][y][h] = -1
             h+=1
             if i != HPSID:
               if not i in conflicts:
