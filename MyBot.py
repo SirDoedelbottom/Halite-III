@@ -58,7 +58,27 @@ def whatDo(ship, blocked = []):
     ShipInfos[ship.id].Priority = 3
     ShipInfos[ship.id].ReturnHome = False
 
-  if ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
+  if RushHome:
+    # find closest Spot to home:
+    MinDist = np.inf
+    BestRetSpot = None
+    Dropoffs = me.get_dropoffs()
+    RetSpots = [me.shipyard.position]
+    for DropOff in Dropoffs:
+      RetSpots.append(DropOff.position)
+    for RetSpot in RetSpots:
+      CurDist = game_map.calculate_distance(RetSpot, ship.position)
+      if CurDist < MinDist:
+        MinDist = CurDist
+        BestRetSpot = RetSpot
+    if ship.position in BestRetSpot.get_surrounding_cardinals():
+      wishDirection = game_map.get_unsafe_moves(ship.position, BestRetSpot)[0]
+      logging.info(ShipInfos[ship.id].Direction)
+    else: # not in surrounding cardinals => navigate to BestRetSpot
+      ShipInfos[ship.id].Priority = 2
+      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, BestRetSpot, blocked )
+      hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
+  elif ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
     ShipInfos[ship.id].Priority = 4
     hf.SetWishPos(ship.id,ship.position, collisionMap)
   elif ship.halite_amount >= 900 or ShipInfos[ship.id].ReturnHome:  # return home!
@@ -89,6 +109,32 @@ while True:
   hf.RefreshDict( ShipInfos, me.get_ships() )
   collisionMap = np.ones((game.game_map.width,game.game_map.height,5))
   collisionMap = -collisionMap
+<<<<<<< HEAD
+=======
+  RushHome = False
+  ShipDistList = []
+  for ship in me.get_ships():
+    DistToHome = game_map.calculate_distance(me.shipyard.position, ship.position)
+    for DropOff in me.get_dropoffs():
+      DistToDropoff = game_map.calculate_distance(DropOff.position, ship.position)
+      if DistToDropoff < DistToHome:
+        DistToHome = DistToDropoff
+    ShipDistList.append( (ship.id, DistToHome) )
+  ShipDistList.sort(key=lambda tup: tup[1])
+  MaxDistShips = 0
+  logging.info("Ships with their Distance to Home:" + str(ShipDistList))
+  if len(ShipDistList) != 0:
+    MaxDist = ShipDistList[-1][1]
+  else:
+    MaxDist = 0
+  for ShipDist in ShipDistList:
+    if ShipDist[1] ==  ShipDistList[-1][1]:
+      MaxDistShips += 1
+  logging.info("Number of Ships on Max Distance:" + str(MaxDistShips))
+  if (constants.MAX_TURNS - game.turn_number) - (MaxDist+MaxDistShips) <= 0: # safty Distance 
+    logging.info("Max Turns = "+str(constants.MAX_TURNS) + ", Turn Number = " + str(game.turn_number) + ", START THE RUSH!!!")
+    RushHome = True
+>>>>>>> 8d6986493219591de6e3106b75746015fbcfe1d6
 
   for ship in me.get_ships():
     whatDo(ship)
@@ -107,7 +153,7 @@ while True:
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-  if game.turn_number <= 300 and me.halite_amount >= constants.SHIP_COST and collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
+  if game.turn_number <= constants.MAX_TURNS*3/5 and me.halite_amount >= constants.SHIP_COST and collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
     command_queue.append(me.shipyard.spawn())
 
   game.end_turn(command_queue)

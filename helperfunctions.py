@@ -51,8 +51,10 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
     Spots = []
     for i in range(dist+1):
       # CAUTION: dir_offset might not work with i>1!!
-      Spots.append( game_map.normalize(Position(ShipPos.x+i,ShipPos.y+dist-i)) )
-      Spots.append( game_map.normalize(Position(ShipPos.x-i,ShipPos.y-dist+i)) )
+      Spots.append( game_map.normalize(Position(ShipPos.x+i,ShipPos.y-dist+i)) )
+      Spots.append( game_map.normalize(Position(ShipPos.x-i,ShipPos.y+dist-i)) )
+      Spots.append( game_map.normalize(Position(ShipPos.x+dist-i,ShipPos.y+i)) )
+      Spots.append( game_map.normalize(Position(ShipPos.x-dist+i,ShipPos.y-i)) )
     # check Halite threshold on Spots
     max_amount = -1
     Found = False
