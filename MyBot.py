@@ -17,8 +17,6 @@ game = hlt.Game()
 """ <<<Game Begin>>> """
 
 
-RndDirection = random.choice([ Direction.North, Direction.South, Direction.East, Direction.West ])
-
 
 # As soon as you call "ready" function below, the 2 second per turn timer will start.
 game.ready("MyPythonBot")
@@ -29,20 +27,24 @@ ShipState = Enum('ShipState', 'north east south west returnHome harvest')
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
+def EvaluatePoint(position):
+  maxDist = 5
+  positionValue = game_map[position].halite_amount
+  for dist in range(1,maxDist):
+    for i in range(dist):
+      positionValue+= int(game_map[game_map.normalize(Position(position.x+i,position.y-dist+i))].halite_amount * (1 - i/(dist+1)))
+      positionValue+= int(game_map[game_map.normalize(Position(position.x+dist-i,position.y+i))].halite_amount * (1 - i/(dist+1)))
+      positionValue+= int(game_map[game_map.normalize(Position(position.x-i,position.y+dist-i))].halite_amount * (1 - i/(dist+1)))
+      positionValue+= int(game_map[game_map.normalize(Position(position.x-dist+i,position.y-i))].halite_amount * (1 - i/(dist+1)))
+  return positionValue
+
 def EvaluateMap():
-  evaluatedMap = np.zeros(game_map.width,game_map.height)
+  evaluatedMap = np.zeros([game_map.width,game_map.height])
   for x in range(game_map.width):
     for y in range(game_map.height):
       evaluatedMap[x,y] = EvaluatePoint(Position(x,y))
   return evaluatedMap
 
-def EvaluatePoint(position):
-  dist = 5
-  positionValue = game_map[position].halite_amount
-  for i in range(1,dist):
-    positionValue+= game_map[game_map.normalize(Position(position.x+i,position.y+dist-i))].halite_amount * (1 - i/(dist+1))
-    positionValue+= game_map[game_map.normalize(Position(position.x-i,position.y-dist+i))].halite_amount * (1 - i/(dist+1))
-  return positionValue
   
 def whatDo(ship, blocked = []):
   departure = me.shipyard.position == ship.position
@@ -87,7 +89,6 @@ while True:
   hf.RefreshDict( ShipInfos, me.get_ships() )
   collisionMap = np.ones((game.game_map.width,game.game_map.height,5))
   collisionMap = -collisionMap
-
 
   for ship in me.get_ships():
     whatDo(ship)
