@@ -29,6 +29,21 @@ ShipState = Enum('ShipState', 'north east south west returnHome harvest')
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
+def EvaluateMap():
+  evaluatedMap = np.zeros(game_map.width,game_map.height)
+  for x in range(game_map.width):
+    for y in range(game_map.height):
+      evaluatedMap[x,y] = EvaluatePoint(Position(x,y))
+  return evaluatedMap
+
+def EvaluatePoint(position):
+  dist = 5
+  positionValue = game_map[position].halite_amount
+  for i in range(1,dist):
+    positionValue+= game_map[game_map.normalize(Position(position.x+i,position.y+dist-i))].halite_amount * (1 - i/(dist+1))
+    positionValue+= game_map[game_map.normalize(Position(position.x-i,position.y-dist+i))].halite_amount * (1 - i/(dist+1))
+  return positionValue
+  
 def whatDo(ship, blocked = []):
   departure = me.shipyard.position == ship.position
   ShipInfos[ship.id].Priority = -1
