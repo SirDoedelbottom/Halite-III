@@ -35,6 +35,8 @@ class ShipInfo:
     self.ReturnHome = False
     self.Priority = 0
     self.Direction = Direction.Still
+    self.Expand = False
+    self.Home = None
 
 def RefreshDict( Dict, hltShips ):
   for ship in hltShips:
@@ -70,6 +72,24 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
     return FindClosestValidSpot(game_map, ShipPos, max_dist+3, InvalidSpots, threshold*0.67)
   return BestSpot
   
+def getAllEnemyFields( game ):
+  # Spawn = game.me.shipyard.position
+  # MapCenterY = game.game_map.height/2
+  EnemyFields = []
+  # if (Spawn.y - MapCenterY)/MapCenterY > 0.2:     # Four Players
+  #   #FourPlayer = True
+  #   pass
+  # else: # Two Players
+  #   EnemyX = game.game_map.width-1-Spawn.x
+  #   EnemyY = Spawn.y
+  #   Enemy = game.game_map[Position(EnemyX,EnemyY)].structure.owner
+  for Enemy in game.players:
+    if Enemy == game.me.id:
+      continue
+    for ship in game.players[Enemy].get_ships():
+      EnemyFields.extend([ship.position]+ship.position.get_surrounding_cardinals())
+  # EnemyFields = list(set(EnemyFields))
+  return EnemyFields
 
 def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
   """ Find the Cheapest Route, but only out of the shortest Routes. (Don't even consider non-shortest Routes) """
@@ -84,7 +104,7 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
     tempCandidatesDir = game_map.get_unsafe_moves(current[0], DestPos)
     tempCandidates = []
     for tc in tempCandidatesDir:
-      tempCandidates.append(current[0].directional_offset(tc))
+      tempCandidates.append(game_map.normalize(current[0].directional_offset(tc)))
     for tC in tempCandidates:
       cost = game_map[tC].halite_amount/10 + current[2]
       if tC not in InvalidSpots:
@@ -111,8 +131,8 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
   if len(path) == 0:
     if ShipPos in InvalidSpots:
       if ShipPos.x == DestPos.x:
-        EastSpot = ShipPos.directional_offset(Direction.East)
-        WestSpot = ShipPos.directional_offset(Direction.West)
+        EastSpot = game_map.normalize(ShipPos.directional_offset(Direction.East))
+        WestSpot = game_map.normalize(ShipPos.directional_offset(Direction.West))
         if WestSpot not in InvalidSpots and EastSpot not in InvalidSpots:
           if game_map[ EastSpot].halite_amount > game_map[WestSpot].halite_amount:
             return Direction.East
@@ -131,8 +151,8 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
           if ShipPos.directional_offset(BackDir) not in InvalidSpots:
             return BackDir
       elif ShipPos.y == DestPos.y:
-        SouthSpot = ShipPos.directional_offset(Direction.South)
-        NorthSpot = ShipPos.directional_offset(Direction.North)
+        SouthSpot = game_map.normalize(ShipPos.directional_offset(Direction.South))
+        NorthSpot = game_map.normalize(ShipPos.directional_offset(Direction.North))
         if SouthSpot not in InvalidSpots and NorthSpot not in InvalidSpots:
           if game_map[ SouthSpot].halite_amount > game_map[NorthSpot].halite_amount:
             return Direction.South
@@ -148,7 +168,7 @@ def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
             BackDir = Direction.East
           else:
             BackDir = Direction.West
-          if ShipPos.directional_offset(BackDir) not in InvalidSpots:
+          if game_map.normalize(ShipPos.directional_offset(BackDir)) not in InvalidSpots:
             return BackDir
     else:
       return Direction.Still

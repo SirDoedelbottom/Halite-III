@@ -22,11 +22,19 @@ game = hlt.Game()
 game.ready("MyPythonBot")
 ShipInfos={}
 ShipState = Enum('ShipState', 'north east south west returnHome harvest')
-
+reservedHalite = 0
+DropOffPending = False
+NextExpansion = None
 
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
+def ExpansionNeeded():
+  if game.turn_number > 50 and len(me.get_ships()) > 10 and len(me.get_dropoffs()) < 1:
+    return True
+  else:
+    return False
+
 def EvaluatePoint(position):
   maxDist = 5
   positionValue = game_map[position].halite_amount
@@ -60,35 +68,35 @@ def whatDo(ship, blocked = []):
 
   if RushHome:
     # find closest Spot to home:
-    MinDist = np.inf
-    BestRetSpot = None
-    Dropoffs = me.get_dropoffs()
-    RetSpots = [me.shipyard.position]
-    for DropOff in Dropoffs:
-      RetSpots.append(DropOff.position)
-    for RetSpot in RetSpots:
-      CurDist = game_map.calculate_distance(RetSpot, ship.position)
-      if CurDist < MinDist:
-        MinDist = CurDist
-        BestRetSpot = RetSpot
-    if ship.position in BestRetSpot.get_surrounding_cardinals():
-      wishDirection = game_map.get_unsafe_moves(ship.position, BestRetSpot)[0]
+    home = ShipInfos[ship.id].Home
+    if ship.position in home.get_surrounding_cardinals():
+      wishDirection = game_map.get_unsafe_moves(ship.position, home)[0]
       logging.info(ShipInfos[ship.id].Direction)
     else: # not in surrounding cardinals => navigate to BestRetSpot
       ShipInfos[ship.id].Priority = 2
-      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, BestRetSpot, blocked )
+      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, home, blocked )
       hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
   elif ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
     ShipInfos[ship.id].Priority = 4
-    hf.SetWishPos(ship.id,ship.position, collisionMap)
+    hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
+  elif ShipInfos[ship.id].Expand == True: #Expanding
+    ShipInfos[ship.id].Priority = 2
+    if ship.position == NextExpansion and me.halite_amount + ship.halite_amount + game_map[ship.position].halite_amount >= 4000:
+      command_queue.append(ship.make_dropoff())
+      wishDirection = None
+      global DropOffPending 
+      DropOffPending = True
+    else:
+      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
+      hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
   elif ship.halite_amount >= 900 or ShipInfos[ship.id].ReturnHome:  # return home!
     ShipInfos[ship.id].Priority = 2
-    wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, me.shipyard.position,blocked )
+    wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ShipInfos[ship.id].Home,blocked+EnemyFields )
     hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
     ShipInfos[ship.id].ReturnHome = True
   else:
     wishSpot = hf.FindClosestValidSpot(game_map,ship.position,10,blocked)
-    wishDirection = hf.FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked)
+    wishDirection = hf.FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked+EnemyFields)
     if ShipInfos[ship.id].Priority == -1:
       if wishDirection == Direction.Still:
         ShipInfos[ship.id].Priority = 1 
@@ -98,7 +106,6 @@ def whatDo(ship, blocked = []):
   ShipInfos[ship.id].Direction = wishDirection
 
 """ <<<Game Loop>>> """
-
 while True:
   game.update_frame()
 
@@ -111,6 +118,21 @@ while True:
   collisionMap = -collisionMap
   RushHome = False
   ShipDistList = []
+  EnemyFields = hf.getAllEnemyFields( game )
+
+  for ship in me.get_ships():
+    MinDist = np.inf
+    BestRetSpot = None
+    Dropoffs = me.get_dropoffs()
+    RetSpots = [me.shipyard.position]
+    for DropOff in Dropoffs:
+      RetSpots.append(DropOff.position)
+    for RetSpot in RetSpots:
+      CurDist = game_map.calculate_distance(RetSpot, ship.position)
+      if CurDist < MinDist:
+        MinDist = CurDist
+        BestRetSpot = RetSpot
+    ShipInfos[ship.id].Home = BestRetSpot
   for ship in me.get_ships():
     DistToHome = game_map.calculate_distance(me.shipyard.position, ship.position)
     for DropOff in me.get_dropoffs():
@@ -133,6 +155,21 @@ while True:
     logging.info("Max Turns = "+str(constants.MAX_TURNS) + ", Turn Number = " + str(game.turn_number) + ", START THE RUSH!!!")
     RushHome = True
 
+  if ExpansionNeeded():
+    reservedHalite = 4000
+    emap = EvaluateMap()
+    PosTupel = np.unravel_index(np.argmax(emap, axis=None), emap.shape)
+    NextExpansion = Position(PosTupel[0],PosTupel[1])
+    bestShip = None
+    bestDist = np.inf
+    for ship in me.get_ships():
+      dist = game_map.calculate_distance(ship.position, NextExpansion)
+      if dist < bestDist:
+        bestDist = dist
+        bestShip = ship
+    ShipInfos[bestShip.id].Expand = True
+    
+
   for ship in me.get_ships():
     whatDo(ship)
   conflicts = {}
@@ -145,14 +182,17 @@ while True:
     for key in conflicts:
       whatDo(me.get_ship(key),conflicts[key])
   for ship in me.get_ships():
-    logging.info("ShipInfo: " + str(ship.id)+ " : " + str(ShipInfos[ship.id].Direction))
-    command_queue.append(ship.move(ShipInfos[ship.id].Direction))
+    
+    if ShipInfos[ship.id].Direction != None:
+      command_queue.append(ship.move(ShipInfos[ship.id].Direction))
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-  if game.turn_number <= constants.MAX_TURNS*3/5 and me.halite_amount >= constants.SHIP_COST and collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
+  if game.turn_number <= constants.MAX_TURNS*3/5 and me.halite_amount - reservedHalite >= constants.SHIP_COST and collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
     command_queue.append(me.shipyard.spawn())
-
+  if DropOffPending == True:
+    reservedHalite -= 4000
+    DropOffPending = False
   game.end_turn(command_queue)
 
 
