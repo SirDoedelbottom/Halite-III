@@ -72,8 +72,18 @@ while True:
   hf.RefreshDict( ShipInfos, me.get_ships() )
   collisionMap = np.ones((game.game_map.width,game.game_map.height,5))
   collisionMap = -collisionMap
-
-
+  RushHome = False
+  ShipDistList = []
+  for ship in me.get_ships():
+    DistToHome = game_map.calculate_distance(me.shipyard.position, ship.position)
+    for DropOff in me.get_dropoffs():
+      DistToDropoff = game_map.calculate_distance(DropOff.position, ship.position)
+      if DistToDropoff < DistToHome:
+        DistToHome = DistToDropoff
+    ShipDistList.append( (ship.id, DistToHome) )
+  ShipDistList.sort(key=lambda tup: tup[1])
+  logging.info("Ships with their Distance to Home:" + str(ShipDistList))
+  #if (constants.MAX_TURNS - game.turn_number) - MaxDist <= 3: # safty Distance 
   for ship in me.get_ships():
     whatDo(ship)
   conflicts = {}
@@ -91,7 +101,7 @@ while True:
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-  if game.turn_number <= 300 and me.halite_amount >= constants.SHIP_COST and collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
+  if game.turn_number <= constants.MAX_TURNS*3/5 and me.halite_amount >= constants.SHIP_COST and collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
     command_queue.append(me.shipyard.spawn())
 
   game.end_turn(command_queue)
