@@ -56,7 +56,27 @@ def whatDo(ship, blocked = []):
     ShipInfos[ship.id].Priority = 3
     ShipInfos[ship.id].ReturnHome = False
 
-  if ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
+  if RushHome:
+    # find closest Spot to home:
+    MinDist = np.inf
+    BestRetSpot = None
+    Dropoffs = me.get_dropoffs()
+    RetSpots = [me.shipyard.position]
+    for DropOff in Dropoffs:
+      RetSpots.append(DropOff.position)
+    for RetSpot in RetSpots:
+      CurDist = game_map.calculate_distance(RetSpot, ship.position)
+      if CurDist < MinDist:
+        MinDist = CurDist
+        BestRetSpot = RetSpot
+    if ship.position in BestRetSpot.get_surrounding_cardinals():
+      wishDirection = game_map.get_unsafe_moves(ship.position, BestRetSpot)[0]
+      logging.info(ShipInfos[ship.id].Direction)
+    else: # not in surrounding cardinals => navigate to BestRetSpot
+      ShipInfos[ship.id].Priority = 2
+      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, BestRetSpot, blocked )
+      hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
+  elif ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
     ShipInfos[ship.id].Priority = 4
     hf.SetWishPos(ship.id,ship.position, collisionMap)
   elif ship.halite_amount >= 900 or ShipInfos[ship.id].ReturnHome:  # return home!
@@ -97,8 +117,20 @@ while True:
         DistToHome = DistToDropoff
     ShipDistList.append( (ship.id, DistToHome) )
   ShipDistList.sort(key=lambda tup: tup[1])
+  MaxDistShips = 0
   logging.info("Ships with their Distance to Home:" + str(ShipDistList))
-  #if (constants.MAX_TURNS - game.turn_number) - MaxDist <= 3: # safty Distance 
+  if len(ShipDistList) != 0:
+    MaxDist = ShipDistList[-1][1]
+  else:
+    MaxDist = 0
+  for ShipDist in ShipDistList:
+    if ShipDist[1] ==  ShipDistList[-1][1]:
+      MaxDistShips += 1
+  logging.info("Number of Ships on Max Distance:" + str(MaxDistShips))
+  if (constants.MAX_TURNS - game.turn_number) - (MaxDist+MaxDistShips) <= 0: # safty Distance 
+    logging.info("Max Turns = "+str(constants.MAX_TURNS) + ", Turn Number = " + str(game.turn_number) + ", START THE RUSH!!!")
+    RushHome = True
+
   for ship in me.get_ships():
     whatDo(ship)
   conflicts = {}
