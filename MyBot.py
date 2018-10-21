@@ -109,8 +109,6 @@ while True:
   hf.RefreshDict( ShipInfos, me.get_ships() )
   collisionMap = np.ones((game.game_map.width,game.game_map.height,5))
   collisionMap = -collisionMap
-<<<<<<< HEAD
-=======
   RushHome = False
   ShipDistList = []
   for ship in me.get_ships():
@@ -134,7 +132,6 @@ while True:
   if (constants.MAX_TURNS - game.turn_number) - (MaxDist+MaxDistShips) <= 0: # safty Distance 
     logging.info("Max Turns = "+str(constants.MAX_TURNS) + ", Turn Number = " + str(game.turn_number) + ", START THE RUSH!!!")
     RushHome = True
->>>>>>> 8d6986493219591de6e3106b75746015fbcfe1d6
 
   for ship in me.get_ships():
     whatDo(ship)
