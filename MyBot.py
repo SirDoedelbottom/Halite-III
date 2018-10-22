@@ -70,7 +70,6 @@ def whatDo(ship, blocked = []):
     home = ship.Home
     if ship.position in home.get_surrounding_cardinals():
       wishDirection = game_map.get_unsafe_moves(ship.position, home)[0]
-      logging.info(ship.Direction)
     else: # not in surrounding cardinals => navigate to BestRetSpot
       ship.Priority = 2
       wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, home, blocked )
@@ -79,7 +78,7 @@ def whatDo(ship, blocked = []):
     ship.Priority = 4
     hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
   elif ship.Expand == True: #Expanding
-    ship.Priority = 2
+    ship.Priority = 3
     if ship.position == NextExpansion and not game_map[NextExpansion].has_structure and me.halite_amount + ship.halite_amount + game_map[ship.position].halite_amount >= 4000:
       command_queue.append(ship.make_dropoff())
       wishDirection = None
@@ -88,6 +87,16 @@ def whatDo(ship, blocked = []):
     else:
       wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
       hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
+  elif ship.Destination is not None:
+    if ship.position == ship.Destination:
+      ship.Priority = 3
+      ship.Destination = None
+      hf.SetWishPos(ship.id,ship.position, collisionMap)
+    else:
+      ship.Priority = 2
+      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Destination,blocked+EnemyFields )
+      hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
+
   elif ship.halite_amount >= 900 or ship.ReturnHome:  # return home!
     ship.Priority = 2
     wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Home,blocked+EnemyFields )
@@ -102,6 +111,7 @@ def whatDo(ship, blocked = []):
       else:
         ship.Priority = 0
     hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
+  #if(wishDirection != None):
   ship.Direction = wishDirection
 
 """ <<<Game Loop>>> """
@@ -140,7 +150,6 @@ while True:
     ShipDistList.append( (ship.id, DistToHome) )
   ShipDistList.sort(key=lambda tup: tup[1])
   MaxDistShips = 0
-  logging.info("Ships with their Distance to Home:" + str(ShipDistList))
   if len(ShipDistList) != 0:
     MaxDist = ShipDistList[-1][1]
   else:
@@ -148,22 +157,26 @@ while True:
   for ShipDist in ShipDistList:
     if ShipDist[1] ==  ShipDistList[-1][1]:
       MaxDistShips += 1
-  logging.info("Number of Ships on Max Distance:" + str(MaxDistShips))
   if (constants.MAX_TURNS - game.turn_number) - (MaxDist+MaxDistShips) <= 0: # safty Distance 
-    logging.info("Max Turns = "+str(constants.MAX_TURNS) + ", Turn Number = " + str(game.turn_number) + ", START THE RUSH!!!")
     RushHome = True
 
   if ExpansionNeeded():
     ExpansionShip = hf.GetExpandingShip(me.get_ships())
-    if ExpansionShip == None:
+    #logging.info("Expansion Ship is : " + str(ExpansionShip))
+    #Always None because im stupid
+    if ExpansionShip is None:
       reservedHalite = 4000
       emap = EvaluateMap()
       NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
+      #logging.info("Next Expansionspot is: " + str(NextExpansion))
       ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
       ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,[ExpansionShip])
       ExpansionShip.Expand = True
+      i = 0
       for ship in ExpansionGroup:
-        ship.Destination = NextExpansion #get surrounding cardinals
+        ship.Destination = NextExpansion.get_surrounding_cardinals()[i] #get surrounding cardinals
+        i+=1
+      #logging.info("Ships in function is: " + str(me.get_ships()))
     else:
       if game_map[NextExpansion].has_structure:
         ExpansionShip.Expand = False

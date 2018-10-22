@@ -56,7 +56,6 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
     if Found == True:
       return BestSpot
   if not BestSpot:
-    logging.info("No Valid Spot found for Ship with ID: " + str(game_map[ShipPos].ship.id))
     return FindClosestValidSpot(game_map, ShipPos, max_dist+3, InvalidSpots, threshold*0.67)
   return BestSpot
   
@@ -171,7 +170,6 @@ def ResolveCollisionMap (colMap,conflicts,ships):
         if colMap[x][y][1] != -1:
           XYConflict = colMap[x][y]
           XYConflict = np.array([int(i) for i in XYConflict])
-          logging.info(XYConflict)
           try:
             FirstNegIdx = np.where(XYConflict == -1)[0][0]
           except IndexError:
