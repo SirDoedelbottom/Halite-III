@@ -179,7 +179,6 @@ def ResolveCollisionMap (colMap,conflicts,ships):
     for y in range(colMap.shape[1]):
         if colMap[x][y][1] != -1:
           XYConflict = colMap[x][y]
-          #XYConflict = np.trim_zeros(XYConflict, 'b')
           XYConflict = np.array([int(i) for i in XYConflict])
           logging.info(XYConflict)
           try:
@@ -191,7 +190,12 @@ def ResolveCollisionMap (colMap,conflicts,ships):
           highestPrio = -1
           for i in XYConflict:
             ship = None
-            next((ship for ship in ships if ship.id == i), None) #get the ship with id i
+            #get the ship with id i
+            for ship in ships:
+              if ship.id == i:
+                break
+              else:
+                ship = None
             currentPrio = ship.Priority
             if currentPrio > highestPrio:
               highestPrio = currentPrio
@@ -211,3 +215,4 @@ def ResolveCollisionMap (colMap,conflicts,ships):
     return True
   else:
     return False
+
