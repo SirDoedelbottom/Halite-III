@@ -77,7 +77,7 @@ def whatDo(ship, blocked = []):
   elif ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
     ship.Priority = 4
     hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
-  elif ship.Expand == True: #Expanding
+  elif ship.Expand == True and me.halite_amount >= 4000: #Expanding
     ship.Priority = 3
     if ship.position == NextExpansion and not game_map[NextExpansion].has_structure and me.halite_amount + ship.halite_amount + game_map[ship.position].halite_amount >= 4000:
       command_queue.append(ship.make_dropoff())
@@ -87,7 +87,7 @@ def whatDo(ship, blocked = []):
     else:
       wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
       hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
-  elif ship.Destination is not None:
+  elif ship.Destination is not None and me.halite_amount >= 4000: ##muss noch allgemeiner gemacht werden 4000 gerade nur damit die icht zu früh losfahren
     if ship.position == ship.Destination:
       ship.Priority = 3
       ship.Destination = None
