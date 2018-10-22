@@ -103,7 +103,7 @@ def whatDo(ship, blocked = []):
     hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
     ship.ReturnHome = True
   else:
-    wishSpot = hf.FindClosestValidSpot(game_map,ship.position,10,blocked)
+    wishSpot = hf.FindClosestValidSpot(game_map,ship.position,32,blocked)
     wishDirection = hf.FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked+EnemyFields)
     if ship.Priority == -1:
       if wishDirection == Direction.Still:
