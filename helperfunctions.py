@@ -37,6 +37,7 @@ class ShipInfo:
     self.Direction = Direction.Still
     self.Expand = False
     self.Home = None
+    self.Destination
 
 def RefreshDict( Dict, hltShips ):
   for ship in hltShips:

@@ -53,6 +53,12 @@ class Ship(Entity):
     def __init__(self, owner, id, position, halite_amount):
         super().__init__(owner, id, position)
         self.halite_amount = halite_amount
+        self.ReturnHome = False
+        self.Priority = 0
+        self.Direction = Direction.Still
+        self.Expand = False
+        self.Home = None
+        self.Destination = None
 
     @property
     def is_full(self):
