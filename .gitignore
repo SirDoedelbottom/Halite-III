@@ -11,3 +11,4 @@ __pycache__/
 *.iws
 helperfunctions.zip
 *.zip
+.vscode/settings.json
