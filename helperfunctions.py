@@ -30,20 +30,7 @@ def ShortestPath( game_map, ShipPos, DestPos ):
     MoveQueue.extend( [Direction.South]*abs(diffY) )
   return MoveQueue
 
-class ShipInfo:
-  def __init__(self):
-    self.ReturnHome = False
-    self.Priority = 0
-    self.Direction = Direction.Still
-    self.Expand = False
-    self.Home = None
-    self.Destination
 
-def RefreshDict( Dict, hltShips ):
-  for ship in hltShips:
-    if ship.id not in Dict:
-      #append ShipInfo to dict:
-      Dict[ship.id]=ShipInfo()
 
 
 def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], threshold = 75 ):
@@ -186,7 +173,7 @@ def SetWishPos(shipID, pos, colMap):
     else:
       i+=1
 
-def ResolveCollisionMap (colMap,conflicts,ShipInfos):
+def ResolveCollisionMap (colMap,conflicts,ships):
   newConflict = False
   for x in range(colMap.shape[0]):
     for y in range(colMap.shape[1]):
@@ -203,7 +190,9 @@ def ResolveCollisionMap (colMap,conflicts,ShipInfos):
           HPSID = 0
           highestPrio = -1
           for i in XYConflict:
-            currentPrio = ShipInfos[i].Priority
+            ship = None
+            next((ship for ship in ships if ship.id == i), None) #get the ship with id i
+            currentPrio = ship.Priority
             if currentPrio > highestPrio:
               highestPrio = currentPrio
               HPSID = i
