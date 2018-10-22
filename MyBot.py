@@ -158,11 +158,12 @@ while True:
     if ExpansionShip == None:
       reservedHalite = 4000
       emap = EvaluateMap()
-      #PosTupel = np.unravel_index(np.argmax(emap, axis=None), emap.shape)
       NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
       ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
       ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,[ExpansionShip])
-      ExpansionShip.Expand = True ####nicht sicher ob das funktioniert
+      ExpansionShip.Expand = True
+      for ship in ExpansionGroup:
+        ship.Destination = NextExpansion #get surrounding cardinals
     else:
       if game_map[NextExpansion].has_structure:
         ExpansionShip.Expand = False
