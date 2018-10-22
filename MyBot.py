@@ -80,7 +80,7 @@ def whatDo(ship, blocked = []):
     hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
   elif ship.Expand == True: #Expanding
     ship.Priority = 2
-    if ship.position == NextExpansion and me.halite_amount + ship.halite_amount + game_map[ship.position].halite_amount >= 4000:
+    if ship.position == NextExpansion and not game_map[NextExpansion].has_structure and me.halite_amount + ship.halite_amount + game_map[ship.position].halite_amount >= 4000:
       command_queue.append(ship.make_dropoff())
       wishDirection = None
       global DropOffPending 
@@ -154,13 +154,18 @@ while True:
     RushHome = True
 
   if ExpansionNeeded():
-    reservedHalite = 4000
-    emap = EvaluateMap()
-    PosTupel = np.unravel_index(np.argmax(emap, axis=None), emap.shape)
-    NextExpansion = Position(PosTupel[0],PosTupel[1])
-    ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
-    ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,ExpansionShip)
-    ExpansionShip.Expand = True ####nicht sicher ob das funktioniert
+    ExpansionShip = hf.GetExpandingShip(me.get_ships())
+    if ExpansionShip == None:
+      reservedHalite = 4000
+      emap = EvaluateMap()
+      #PosTupel = np.unravel_index(np.argmax(emap, axis=None), emap.shape)
+      NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
+      ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
+      ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,[ExpansionShip])
+      ExpansionShip.Expand = True ####nicht sicher ob das funktioniert
+    else:
+      if game_map[NextExpansion].has_structure:
+        ExpansionShip.Expand = False
     
 
   for ship in me.get_ships():

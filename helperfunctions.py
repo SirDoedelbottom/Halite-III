@@ -61,22 +61,13 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
   return BestSpot
   
 def getAllEnemyFields( game ):
-  # Spawn = game.me.shipyard.position
-  # MapCenterY = game.game_map.height/2
   EnemyFields = []
-  # if (Spawn.y - MapCenterY)/MapCenterY > 0.2:     # Four Players
-  #   #FourPlayer = True
-  #   pass
-  # else: # Two Players
-  #   EnemyX = game.game_map.width-1-Spawn.x
-  #   EnemyY = Spawn.y
-  #   Enemy = game.game_map[Position(EnemyX,EnemyY)].structure.owner
   for Enemy in game.players:
     if Enemy == game.me.id:
       continue
     for ship in game.players[Enemy].get_ships():
       EnemyFields.extend([ship.position]+ship.position.get_surrounding_cardinals())
-  # EnemyFields = list(set(EnemyFields))
+  EnemyFields = list(set(EnemyFields))
   return EnemyFields
 
 def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
@@ -224,9 +215,28 @@ def closestShipToPosition(game_map, ships, position,count = 1, ignoreShips = [])
     for ship in ships:
       if ship in ignoreShips+closestShips:
         continue
-      currentDistance = game_map.calculate_distance(ship.Position,position)
+      currentDistance = game_map.calculate_distance(ship.position,position)
       if currentDistance < closestDistance:
         closestDistance= currentDistance
         closestShip = ship
     closestShips.append(closestShip)
   return closestShips
+
+def GetExpandingShip(ships):
+  for ship in ships:
+    if ship.Expand == True:
+      return ship
+  return None
+
+def GetPotentialExpansions(game_map, emap,position):
+  """Returns a List of Potential Expansions in Range of 10% of the max Value sorted by distance to position"""
+  maxValue = np.amax(emap)
+  PoExPositions = []
+  for x in range(emap.shape[0]):
+    for y in range(emap.shape[1]):
+      if emap[x,y] / maxValue > 0.9 and not game_map[Position(x,y)].has_structure:        #10% in range of maxValue
+        PoExPositions.append(Position(x,y))
+  def distance(pos):
+    return game_map.calculate_distance(pos,position)
+  PoExPositions.sort(key=distance)
+  return PoExPositions
