@@ -216,3 +216,17 @@ def ResolveCollisionMap (colMap,conflicts,ships):
   else:
     return False
 
+def closestShipToPosition(game_map, ships, position,count = 1, ignoreShips = []):
+  closestShips = []
+  for i in range(count):
+    closestShip = None
+    closestDistance = np.inf
+    for ship in ships:
+      if ship in ignoreShips+closestShips:
+        continue
+      currentDistance = game_map.calculate_distance(ship.Position,position)
+      if currentDistance < closestDistance:
+        closestDistance= currentDistance
+        closestShip = ship
+    closestShips.append(closestShip)
+  return closestShips

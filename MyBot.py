@@ -158,14 +158,9 @@ while True:
     emap = EvaluateMap()
     PosTupel = np.unravel_index(np.argmax(emap, axis=None), emap.shape)
     NextExpansion = Position(PosTupel[0],PosTupel[1])
-    bestShip = None
-    bestDist = np.inf
-    for ship in me.get_ships():
-      dist = game_map.calculate_distance(ship.position, NextExpansion)
-      if dist < bestDist:
-        bestDist = dist
-        bestShip = ship
-    bestShip.Expand = True ####nicht sicher ob das funktioniert
+    ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
+    ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,ExpansionShip)
+    ExpansionShip.Expand = True ####nicht sicher ob das funktioniert
     
 
   for ship in me.get_ships():
