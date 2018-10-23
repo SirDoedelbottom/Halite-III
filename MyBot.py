@@ -10,7 +10,6 @@ import helperfunctions as hf
 import numpy as np
 from enum import Enum     # for enum34, or the stdlib version
 
-
 game = hlt.Game()
 
 """ <<<Game Begin>>> """

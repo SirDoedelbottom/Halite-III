@@ -67,17 +67,8 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """
   logging.info("Inside FindClostestValidSpot")
   BestSpot = False               # default: stay still
-  BellMap = ShipBellMap
-  width = game_map.width
-  height = game_map.height
   maxDist = 5
   RepellantFactor = 0.5
-  for dist in range(maxDist+1):
-    for i in range(dist):
-      BellMap[(ShipPos.x+i) % width][ShipPos.y-dist+i % height] -= (maxDist-dist)/maxDist*RepellantFactor
-      BellMap[(ShipPos.x+dist-i) % width][(ShipPos.y+i) % height] -= (maxDist-dist)/maxDist*RepellantFactor
-      BellMap[(ShipPos.x-i) % width][(ShipPos.y+dist-i) % height] -= (maxDist-dist)/maxDist*RepellantFactor
-      BellMap[(ShipPos.x-dist+i) % width][(ShipPos.y-i) % height] -= (maxDist-dist)/maxDist*RepellantFactor
   for dist in range(max_dist):     # iterate over distances
     # get Spots with this range
     Spots = []
@@ -91,8 +82,9 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots
     max_amount = -1
     Found = False
     for Spot in Spots:
-      Halite = BellMap[Spot.x][Spot.y]*game_map[Spot].halite_amount
-      if Halite >= max(threshold,max_amount) and Spot not in InvalidSpots:
+      Corr = 1 - (maxDist-dist)/maxDist*RepellantFactor
+      Halite = ShipBellMap[Spot.x][Spot.y] * Corr * game_map[Spot].halite_amount
+      if Halite >= max(threshold, max_amount) and Spot not in InvalidSpots:
         BestSpot = Spot
         max_amount = Halite
         Found = True
@@ -296,4 +288,5 @@ def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=0.5 ):
         BellMap[(ShipPos.x+dist-i) % width][(ShipPos.y+i) % height] += (maxDist-dist)/maxDist*RepellantFactor
         BellMap[(ShipPos.x-i) % width][(ShipPos.y+dist-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
         BellMap[(ShipPos.x-dist+i) % width][(ShipPos.y-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
+  logging.info(BellMap)
   return BellMap
