@@ -5,12 +5,13 @@ import hlt
 from hlt import constants
 from hlt.positionals import Direction
 from hlt.positionals import Position
-import random
 import logging
 import helperfunctions as hf
 import numpy as np
 from enum import Enum     # for enum34, or the stdlib version
 
+
+from keras.utils import plot_model
 
 game = hlt.Game()
 
