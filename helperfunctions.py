@@ -30,8 +30,38 @@ def ShortestPath( game_map, ShipPos, DestPos ):
     MoveQueue.extend( [Direction.South]*abs(diffY) )
   return MoveQueue
 
+class ShipInfo:
+  def __init__(self):
+    self.ReturnHome = False
+    self.Expand = False
+    self.Home = None
+    self.Destination = None
+  def __repr__(self):
+    return "{}(Expand={}, Destination={})".format(self.__class__.__name__,
+                                                       self.Expand,
+                                                       self.Destination)
 
 
+def LoadShipInfos(shipInfos, ships):
+  for ship in ships:
+    if ship.id in shipInfos:
+      ship.ReturnHome = shipInfos[ship.id].ReturnHome
+      ship.Expand = shipInfos[ship.id].Expand
+      ship.Home = shipInfos[ship.id].Home
+      ship.Destination = shipInfos[ship.id].Destination
+  #return shipInfos
+
+def SaveShipInfos(shipInfos, ships):
+  shipInfos = {}
+  for ship in ships:
+    SI = ShipInfo()
+
+    SI.ReturnHome = ship.ReturnHome
+    SI.Expand = ship.Expand
+    SI.Home = ship.Home
+    SI.Destination = ship.Destination
+    shipInfos[ship.id] = SI
+  return shipInfos
 
 def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], threshold = 75 ):
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """

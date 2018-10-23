@@ -24,6 +24,7 @@ ShipState = Enum('ShipState', 'north east south west returnHome harvest')
 reservedHalite = 0
 DropOffPending = False
 NextExpansion = None
+ShipInfos = {}
 
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
@@ -77,7 +78,7 @@ def whatDo(ship, blocked = []):
   elif ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
     ship.Priority = 4
     hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
-  elif ship.Expand == True and me.halite_amount >= 4000: #Expanding
+  elif ship.Expand == True: #Expanding
     ship.Priority = 3
     if ship.position == NextExpansion and not game_map[NextExpansion].has_structure and me.halite_amount + ship.halite_amount + game_map[ship.position].halite_amount >= 4000:
       command_queue.append(ship.make_dropoff())
@@ -87,7 +88,7 @@ def whatDo(ship, blocked = []):
     else:
       wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
       hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
-  elif ship.Destination is not None and me.halite_amount >= 4000: ##muss noch allgemeiner gemacht werden 4000 gerade nur damit die icht zu früh losfahren
+  elif ship.Destination is not None: ##muss noch allgemeiner gemacht werden 4000 gerade nur damit die icht zu früh losfahren
     if ship.position == ship.Destination:
       ship.Priority = 3
       ship.Destination = None
@@ -127,6 +128,7 @@ while True:
   RushHome = False
   ShipDistList = []
   EnemyFields = hf.getAllEnemyFields( game )
+  hf.LoadShipInfos(ShipInfos, me.get_ships())
 
   for ship in me.get_ships():
     MinDist = np.inf
@@ -163,12 +165,13 @@ while True:
   if ExpansionNeeded():
     ExpansionShip = hf.GetExpandingShip(me.get_ships())
     #logging.info("Expansion Ship is : " + str(ExpansionShip))
-    #Always None because im stupid
+    #logging.info("ShipInfos : " + str(ShipInfos))
     if ExpansionShip is None:
+      for ship in me.get_ships():
+        ship.Destination = None
       reservedHalite = 4000
       emap = EvaluateMap()
       NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
-      #logging.info("Next Expansionspot is: " + str(NextExpansion))
       ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
       ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,[ExpansionShip])
       ExpansionShip.Expand = True
@@ -176,7 +179,6 @@ while True:
       for ship in ExpansionGroup:
         ship.Destination = NextExpansion.get_surrounding_cardinals()[i] #get surrounding cardinals
         i+=1
-      #logging.info("Ships in function is: " + str(me.get_ships()))
     else:
       if game_map[NextExpansion].has_structure:
         ExpansionShip.Expand = False
@@ -205,6 +207,7 @@ while True:
   if DropOffPending == True:
     reservedHalite -= 4000
     DropOffPending = False
+  ShipInfos = hf.SaveShipInfos(ShipInfos, me.get_ships())
   game.end_turn(command_queue)
 
 
