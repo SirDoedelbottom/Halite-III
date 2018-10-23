@@ -63,9 +63,21 @@ def SaveShipInfos(shipInfos, ships):
     shipInfos[ship.id] = SI
   return shipInfos
 
-def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], threshold = 75 ):
+def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots = [], threshold = 25 ):
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """
+  logging.info("Inside FindClostestValidSpot")
   BestSpot = False               # default: stay still
+  BellMap = ShipBellMap
+  width = game_map.width
+  height = game_map.height
+  maxDist = 5
+  RepellantFactor = 0.5
+  for dist in range(maxDist+1):
+    for i in range(dist):
+      BellMap[(ShipPos.x+i) % width][ShipPos.y-dist+i % height] -= (maxDist-dist)/maxDist*RepellantFactor
+      BellMap[(ShipPos.x+dist-i) % width][(ShipPos.y+i) % height] -= (maxDist-dist)/maxDist*RepellantFactor
+      BellMap[(ShipPos.x-i) % width][(ShipPos.y+dist-i) % height] -= (maxDist-dist)/maxDist*RepellantFactor
+      BellMap[(ShipPos.x-dist+i) % width][(ShipPos.y-i) % height] -= (maxDist-dist)/maxDist*RepellantFactor
   for dist in range(max_dist):     # iterate over distances
     # get Spots with this range
     Spots = []
@@ -79,14 +91,16 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, InvalidSpots = [], thresh
     max_amount = -1
     Found = False
     for Spot in Spots:
-      if game_map[game_map.normalize(Spot)].halite_amount >= max(threshold,max_amount) and Spot not in InvalidSpots:
+      Halite = BellMap[Spot.x][Spot.y]*game_map[Spot].halite_amount
+      if Halite >= max(threshold,max_amount) and Spot not in InvalidSpots:
         BestSpot = Spot
-        max_amount = game_map[game_map.normalize(Spot)].halite_amount
+        max_amount = Halite
         Found = True
     if Found == True:
       return BestSpot
   if not BestSpot:
-    return FindClosestValidSpot(game_map, ShipPos, max_dist+3, InvalidSpots, threshold*0.67)
+    logging.info("No Spot found: calling myself again")
+    return FindClosestValidSpot(game_map, ShipPos, max_dist+3, ShipBellMap, InvalidSpots, threshold*0.75)
   return BestSpot
   
 def getAllEnemyFields( game ):
@@ -268,3 +282,18 @@ def GetPotentialExpansions(game_map, emap,position):
     return game_map.calculate_distance(pos,position)
   PoExPositions.sort(key=distance)
   return PoExPositions
+
+def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=0.5 ):
+  logging.info("Inside GetShipBellMap")
+  BellMap = np.zeros((game_map.width, game_map.height))
+  height = game_map.height
+  width = game_map.width
+  for ship in ships:
+    ShipPos = ship.position
+    for dist in range(maxDist+1):
+      for i in range(dist):
+        BellMap[(ShipPos.x+i) % width][ShipPos.y-dist+i % height] += (maxDist-dist)/maxDist*RepellantFactor
+        BellMap[(ShipPos.x+dist-i) % width][(ShipPos.y+i) % height] += (maxDist-dist)/maxDist*RepellantFactor
+        BellMap[(ShipPos.x-i) % width][(ShipPos.y+dist-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
+        BellMap[(ShipPos.x-dist+i) % width][(ShipPos.y-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
+  return BellMap

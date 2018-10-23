@@ -11,8 +11,6 @@ import numpy as np
 from enum import Enum     # for enum34, or the stdlib version
 
 
-from keras.utils import plot_model
-
 game = hlt.Game()
 
 """ <<<Game Begin>>> """
@@ -26,6 +24,8 @@ reservedHalite = 0
 DropOffPending = False
 NextExpansion = None
 ShipInfos = {}
+# ShipBellMap = hf.GetShipBellMap( game.me.get_ships(), game.game_map )
+
 
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
@@ -105,7 +105,7 @@ def whatDo(ship, blocked = []):
     hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
     ship.ReturnHome = True
   else:
-    wishSpot = hf.FindClosestValidSpot(game_map,ship.position,32,blocked)
+    wishSpot = hf.FindClosestValidSpot(game_map, ship.position, 32, ShipBellMap, blocked)
     wishDirection = hf.FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked+EnemyFields)
     if ship.Priority == -1:
       if wishDirection == Direction.Still:
@@ -130,6 +130,7 @@ while True:
   ShipDistList = []
   EnemyFields = hf.getAllEnemyFields( game )
   hf.LoadShipInfos(ShipInfos, me.get_ships())
+  ShipBellMap = hf.GetShipBellMap( me.get_ships(), game_map )
 
   for ship in me.get_ships():
     MinDist = np.inf
