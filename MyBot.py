@@ -62,11 +62,16 @@ def whatDo(ship, blocked = []):
     if do.position == ship.position:
       departure = True
 
+  logging.info("Ship ID = " + str(ship.id) + ", Mining Counter = " + str(ship.MiningCounter))
+
   if departure:
     ship.Priority = 3
     ship.ReturnHome = False
 
-  if RushHome:
+  if ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):  # Out of Fuel
+    ship.Priority = 4
+    hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
+  elif RushHome:
     # find closest Spot to home:
     home = ship.Home
     if ship.position in home.get_surrounding_cardinals():
@@ -75,9 +80,6 @@ def whatDo(ship, blocked = []):
       ship.Priority = 2
       wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, home, blocked )
       hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
-  elif ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):
-    ship.Priority = 4
-    hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
   elif ship.Expand == True: #Expanding
     ship.Priority = 3
     if ship.position == NextExpansion and not game_map[NextExpansion].has_structure and me.halite_amount + ship.halite_amount + game_map[ship.position].halite_amount >= 4000:
@@ -90,7 +92,8 @@ def whatDo(ship, blocked = []):
       hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
   elif ship.Destination is not None: ##muss noch allgemeiner gemacht werden 4000 gerade nur damit die icht zu früh losfahren
     if ship.position == ship.Destination:
-      ship.Priority = 3
+      ship.MiningCounter = 0
+      ship.Priority = 1
       ship.Destination = None
       hf.SetWishPos(ship.id,ship.position, collisionMap)
     else:
@@ -103,8 +106,22 @@ def whatDo(ship, blocked = []):
     wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Home,blocked+EnemyFields )
     hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
     ship.ReturnHome = True
-  else:
+
+  elif ship.MiningCounter > -1:
+    if ship.MiningCounter >= 3:
+      ship.MiningCounter = -1
+    elif len(blocked) == 0:
+      ship.MiningCounter += 1
+    wishDirection = Direction.Still
+    hf.SetWishPos(ship.id,ship.position, collisionMap)
+    ship.Priority = 1
+    
+  else: # find closest valid spot
+    logging.info("Inside Else")
     wishSpot = hf.FindClosestValidSpot(game_map, ship.position, 32, ShipBellMap, blocked)
+    ship.Destination = wishSpot
+    if wishSpot == ship.position and len(blocked) == 0:
+      ship.MiningCounter = 0
     wishDirection = hf.FindCheapestShortestRoute(game_map,ship.position,wishSpot,blocked+EnemyFields)
     if ship.Priority == -1:
       if wishDirection == Direction.Still:

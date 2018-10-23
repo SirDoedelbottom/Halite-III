@@ -36,6 +36,7 @@ class ShipInfo:
     self.Expand = False
     self.Home = None
     self.Destination = None
+    self.MiningCounter = -1
   def __repr__(self):
     return "{}(Expand={}, Destination={})".format(self.__class__.__name__,
                                                        self.Expand,
@@ -49,6 +50,7 @@ def LoadShipInfos(shipInfos, ships):
       ship.Expand = shipInfos[ship.id].Expand
       ship.Home = shipInfos[ship.id].Home
       ship.Destination = shipInfos[ship.id].Destination
+      ship.MiningCounter = shipInfos[ship.id].MiningCounter
   #return shipInfos
 
 def SaveShipInfos(shipInfos, ships):
@@ -60,12 +62,12 @@ def SaveShipInfos(shipInfos, ships):
     SI.Expand = ship.Expand
     SI.Home = ship.Home
     SI.Destination = ship.Destination
+    SI.MiningCounter = ship.MiningCounter
     shipInfos[ship.id] = SI
   return shipInfos
 
-def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots = [], threshold = 25 ):
+def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots = [], threshold = 75 ):
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """
-  logging.info("Inside FindClostestValidSpot")
   BestSpot = False               # default: stay still
   maxDist = 5
   RepellantFactor = 0.5
@@ -276,7 +278,6 @@ def GetPotentialExpansions(game_map, emap,position):
   return PoExPositions
 
 def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=0.5 ):
-  logging.info("Inside GetShipBellMap")
   BellMap = np.zeros((game_map.width, game_map.height))
   height = game_map.height
   width = game_map.width
@@ -288,5 +289,4 @@ def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=0.5 ):
         BellMap[(ShipPos.x+dist-i) % width][(ShipPos.y+i) % height] += (maxDist-dist)/maxDist*RepellantFactor
         BellMap[(ShipPos.x-i) % width][(ShipPos.y+dist-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
         BellMap[(ShipPos.x-dist+i) % width][(ShipPos.y-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
-  logging.info(BellMap)
   return BellMap
