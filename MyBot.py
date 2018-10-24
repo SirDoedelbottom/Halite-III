@@ -124,7 +124,7 @@ def whatDo(ship, blocked = []):
     wishPosition = ship.position
     ship.Priority = 3
   else:
-    wishDirection=hf.FindEfficientSpot(game_map,ship,6,blocked)
+    wishDirection=hf.FindEfficientSpot(game_map,ship,6,blocked+EnemyFields)
     logging.info(wishDirection)
     wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
   # else: # find closest valid spot

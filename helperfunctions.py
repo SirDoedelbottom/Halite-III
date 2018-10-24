@@ -105,8 +105,10 @@ def getAllEnemyFields( game ):
   for Enemy in game.players:
     if Enemy == game.me.id:
       continue
+    #EnemyFields.extend(game.players[Enemy].get_ships())
     for ship in game.players[Enemy].get_ships():
-      EnemyFields.extend([ship.position]+ship.position.get_surrounding_cardinals())
+       #EnemyFields.extend([ship.position]+ship.position.get_surrounding_cardinals())
+       EnemyFields.append(ship.position)
   EnemyFields = list(set(EnemyFields))
   return EnemyFields
 
@@ -366,6 +368,8 @@ def FindEfficientSpot(game_map,ship,distance,invalidSpots):
       highestValue = field[f][3]
       destination = f
   logging.info(destination)
+  if destination is None:
+    return Direction.Still
   #destination = max(field, key=field[3].get)
   ship.MiningRounds = field[destination][2]
   if len(field[destination][4]) == 0:
