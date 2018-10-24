@@ -333,6 +333,7 @@ def DijkstraField( game_map, shipPos, distance, invalidSpots):
 
     cardinals = currentPosition.get_surrounding_cardinals()
     for cardinal in cardinals:
+      cardinal = game_map.normalize(cardinal)
       if cardinal in candidates:
         if(currentTuple[0]+1 < candidates[cardinal][0]):
           candidates[cardinal] = (currentTuple[0] + 1,currentPosition)
@@ -352,12 +353,17 @@ def closestReachablePositionToPosition(game_map, field, position):
 
 def GetDirectionToDestination(game_map,ship,destination,invalidSpots):
   distance = game_map.calculate_distance(ship.position, destination)
-  field = DijkstraField(game_map,ship.position,distance+2,invalidSpots)
+  field = DijkstraField(game_map,ship.position,distance+1,invalidSpots)
   currentPosition = destination
   logging.info(currentPosition)
   logging.info(field)
+  if currentPosition is None:
+    logging.info("No where to go. gg")
+    return Direction.Still
+
   if currentPosition not in field: #already blocked
     currentPosition = closestReachablePositionToPosition(game_map,field,destination)
+  logging.info(currentPosition)
   if field[currentPosition][1] is None: #unreachable
     currentPosition = closestReachablePositionToPosition(game_map,field,destination)
 
@@ -371,6 +377,7 @@ def GetDirectionToDestination(game_map,ship,destination,invalidSpots):
     if ship.position in invalidSpots:
       ca = ship.position.get_surrounding_cardinals()
       for c in ca:
+        c = game_map.normalize(c)
         if c not in invalidSpots:
           return game_map.get_unsafe_moves(ship.position, c)[0]
         

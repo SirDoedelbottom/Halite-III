@@ -93,8 +93,8 @@ def whatDo(ship, blocked = []):
       global DropOffPending 
       DropOffPending = True
     else:
-      #wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
-      wishDirection = hf.GetDirectionToDestination(game_map, ship, NextExpansion,blocked+EnemyFields)
+      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
+      #wishDirection = hf.GetDirectionToDestination(game_map, ship, NextExpansion,blocked+EnemyFields)
       #hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
       wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
   elif ship.Destination is not None: ##muss noch allgemeiner gemacht werden 4000 gerade nur damit die icht zu früh losfahren
@@ -106,8 +106,8 @@ def whatDo(ship, blocked = []):
       wishPosition = ship.position
     else:
       ship.Priority = 1
-      #wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Destination,blocked+EnemyFields )
-      wishDirection = hf.GetDirectionToDestination(game_map, ship, ship.Destination,blocked+EnemyFields)
+      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Destination,blocked+EnemyFields )
+      #wishDirection = hf.GetDirectionToDestination(game_map, ship, ship.Destination,blocked+EnemyFields)
 
       #hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
       wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
@@ -115,6 +115,8 @@ def whatDo(ship, blocked = []):
   elif ship.halite_amount >= 950 or ship.ReturnHome:  # return home!
     #ship.Priority = 1
     #wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Home,blocked+EnemyFields )
+    if ship.Home is None:
+      ship.Home = me.shipyard.position
     wishDirection = hf.GetDirectionToDestination(game_map, ship, ship.Home,blocked+EnemyFields)
     #hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
     wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
@@ -130,7 +132,7 @@ def whatDo(ship, blocked = []):
     wishPosition = ship.position
     ship.Priority = 3
   else:
-    wishDirection=hf.FindEfficientSpot(game_map,ship,8,blocked+EnemyFields)
+    wishDirection=hf.FindEfficientSpot(game_map,ship,7,blocked+EnemyFields)
     #logging.info(wishDirection)
     wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
   # else: # find closest valid spot
