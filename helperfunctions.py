@@ -70,7 +70,7 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots
   """ Returns the position of the closest valid spot (not blocked, enough halite avaliable) within the given range """
   BestSpot = False               # default: stay still
   maxDist = 5
-  RepellantFactor = 0.5
+  RepellantFactor = 1
   for dist in range(max_dist):     # iterate over distances
     # get Spots with this range
     Spots = []
@@ -84,8 +84,8 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots
     max_amount = -1
     Found = False
     for Spot in Spots:
-      Corr = 1 - (maxDist-dist)/maxDist*RepellantFactor
-      Halite = ShipBellMap[Spot.x][Spot.y] * Corr * game_map[Spot].halite_amount
+      Corr = ((maxDist-dist)/maxDist)*RepellantFactor
+      Halite = (ShipBellMap[Spot.x][Spot.y] + Corr) * game_map[Spot].halite_amount
       if Halite >= max(threshold, max_amount) and Spot not in InvalidSpots:
         BestSpot = Spot
         max_amount = Halite
@@ -258,6 +258,16 @@ def closestShipToPosition(game_map, ships, position,count = 1, ignoreShips = [])
     closestShips.append(closestShip)
   return closestShips
 
+def SortShipsByDistance(game_map, ships, position):
+  def distance(ship):
+    #bei schiffen gleicher distanz werden zu erst die schiffe weiter links genommen
+    return game_map.calculate_distance(ship.position,position)+(ship.position.x/100)
+  ships.sort(key=distance)
+
+  return ships
+
+
+
 def GetExpandingShip(ships):
   for ship in ships:
     if ship.Expand == True:
@@ -277,7 +287,7 @@ def GetPotentialExpansions(game_map, emap,position):
   PoExPositions.sort(key=distance)
   return PoExPositions
 
-def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=0.5 ):
+def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=1 ):
   BellMap = np.zeros((game_map.width, game_map.height))
   height = game_map.height
   width = game_map.width
@@ -290,3 +300,74 @@ def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=0.5 ):
         BellMap[(ShipPos.x-i) % width][(ShipPos.y+dist-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
         BellMap[(ShipPos.x-dist+i) % width][(ShipPos.y-i) % height] += (maxDist-dist)/maxDist*RepellantFactor
   return BellMap
+
+
+
+def DijkstraField( game_map, shipPos, distance, invalidSpots):
+  field = {}
+  candidates = GetPointsInDistance(game_map, distance,[shipPos],invalidSpots)
+  candidates[0] = (candidates[0],0)
+  for c in range(1,len(candidates)):
+    candidates[c] =(candidates[c],np.inf,None)
+  candidates = dict(candidates)
+  while len(candidates) > 0:
+    currentPosition = min(candidates, key=candidates.get)
+    currentTuple = candidates.pop(currentPosition)
+    
+    field[currentPosition] = (currentTuple[0], currentTuple[1])
+
+    cardinals = currentPosition.get_surrounding_cardinals()
+    for cardinal in cardinals:
+      if cardinal in candidates:
+        if(currentTuple[0]+1 < candidates[cardinal]):
+          candidates[cardinal] = (currentTuple[0] + 1,currentPosition)
+  return field
+
+def FindEfficientSpot(game_map,ship,distance,invalidSpots):
+  field = DijkstraField(game_map,ship.position,distance,invalidSpots)
+  for f in field:
+    path = GetDijkstraPath(field,field[f])
+    #kosten zum punkt
+    kosten = -1
+    for position in path:
+      if kosten == -1: #destination kosten muss man nicht bezahlen
+        kosten = 0
+        continue
+      kosten += game_map[position]
+    DurschnittsAbbauRaten=[]
+    for i in range(10):
+      DurschnittsAbbauRate = (game_map[f].halite_amount *( 1-0.75^(i-field[f][0]))-kosten)/i
+      DurschnittsAbbauRaten.append(DurschnittsAbbauRate)
+    index = np.argmax(DurschnittsAbbauRaten)
+    field[f] =(field[f][0],field[f][1],index-field[f][0],DurschnittsAbbauRaten[index],path)
+  destination = max(field, key=field[3].get)
+  ship.MiningRounds = field[destination][2]
+  direction = game_map.naive_navigate(ship, field[destination][4])[0]
+  return direction
+
+  
+def GetDijkstraPath(field, destination):
+  path = []
+  spot = field[destination]
+  while spot is not None:
+    if spot[1] in field:
+      path.append(spot[1])
+      spot = field[spot[1]]
+    else:
+      spot = None
+  return path
+
+
+def GetPointsInDistance(game_map, distance, candidates,invalidSpots,visitedSpots=[]): #candidates ist ne liste die am anfang die startposition haben sollte
+  if game_map.calculate_distance(visitedSpots[0], visitedSpots[-1]) == distance:
+    return visitedSpots
+  for pos in candidates:
+    visitedSpots.append(pos)
+    cardinals = pos.get_surrounding_cardinals()
+    for c in cardinals:
+      if c not in invalidSpots and c not in candidates and c not in visitedSpots:
+        candidates.append(c)
+  GetPointsInDistance(game_map, distance, candidates,invalidSpots,visitedSpots)
+
+
+    
