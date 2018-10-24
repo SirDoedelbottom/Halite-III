@@ -60,6 +60,7 @@ class Ship(Entity):
         self.Home = None
         self.Destination = None
         self.MiningCounter = -1
+        self.MiningRounds = 0
 
     @property
     def is_full(self):

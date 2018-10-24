@@ -37,6 +37,7 @@ class ShipInfo:
     self.Home = None
     self.Destination = None
     self.MiningCounter = -1
+    self.MiningRounds = 0
   def __repr__(self):
     return "{}(Expand={}, Destination={})".format(self.__class__.__name__,
                                                        self.Expand,
@@ -51,6 +52,7 @@ def LoadShipInfos(shipInfos, ships):
       ship.Home = shipInfos[ship.id].Home
       ship.Destination = shipInfos[ship.id].Destination
       ship.MiningCounter = shipInfos[ship.id].MiningCounter
+      ship.MiningRounds = shipInfos[ship.id].MiningRounds
   #return shipInfos
 
 def SaveShipInfos(shipInfos, ships):
@@ -63,6 +65,7 @@ def SaveShipInfos(shipInfos, ships):
     SI.Home = ship.Home
     SI.Destination = ship.Destination
     SI.MiningCounter = ship.MiningCounter
+    SI.MiningRounds = ship.MiningRounds
     shipInfos[ship.id] = SI
   return shipInfos
 
@@ -261,6 +264,8 @@ def closestShipToPosition(game_map, ships, position,count = 1, ignoreShips = [])
 def SortShipsByDistance(game_map, ships, position):
   def distance(ship):
     #bei schiffen gleicher distanz werden zu erst die schiffe weiter links genommen
+    if ship.halite_amount * 10 < game_map[ship.position].halite_amount:
+      return -1
     return game_map.calculate_distance(ship.position,position)+(ship.position.x/100)
   ships.sort(key=distance)
 
@@ -305,13 +310,20 @@ def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=1 ):
 
 def DijkstraField( game_map, shipPos, distance, invalidSpots):
   field = {}
-  candidates = GetPointsInDistance(game_map, distance,[shipPos],invalidSpots)
-  candidates[0] = (candidates[0],0)
-  for c in range(1,len(candidates)):
-    candidates[c] =(candidates[c],np.inf,None)
-  candidates = dict(candidates)
+  candidates = GetPointsInDistance(game_map, distance,shipPos,invalidSpots)
+  # candidates[shipPos] = (0,None)
+  # for c in candidates: #range(1,len(candidates)):
+  #   candidates[c] =(np.inf,None)
   while len(candidates) > 0:
-    currentPosition = min(candidates, key=candidates.get)
+    #currentPosition = min(candidates, key=getTuple)
+    lowestValue = np.inf
+    currentPosition = None
+    for c in candidates:
+      if candidates[c][0] <= lowestValue:
+        lowestValue = candidates[c][0]
+        currentPosition = c
+    # logging.info(currentPosition)
+    # logging.info(candidates)
     currentTuple = candidates.pop(currentPosition)
     
     field[currentPosition] = (currentTuple[0], currentTuple[1])
@@ -319,30 +331,51 @@ def DijkstraField( game_map, shipPos, distance, invalidSpots):
     cardinals = currentPosition.get_surrounding_cardinals()
     for cardinal in cardinals:
       if cardinal in candidates:
-        if(currentTuple[0]+1 < candidates[cardinal]):
+        if(currentTuple[0]+1 < candidates[cardinal][0]):
           candidates[cardinal] = (currentTuple[0] + 1,currentPosition)
   return field
 
 def FindEfficientSpot(game_map,ship,distance,invalidSpots):
   field = DijkstraField(game_map,ship.position,distance,invalidSpots)
   for f in field:
-    path = GetDijkstraPath(field,field[f])
+    path = GetDijkstraPath(field,f)
     #kosten zum punkt
     kosten = -1
     for position in path:
       if kosten == -1: #destination kosten muss man nicht bezahlen
         kosten = 0
         continue
-      kosten += game_map[position]
+      kosten += game_map[position].halite_amount
     DurschnittsAbbauRaten=[]
-    for i in range(10):
-      DurschnittsAbbauRate = (game_map[f].halite_amount *( 1-0.75^(i-field[f][0]))-kosten)/i
+    for i in range(1,10):
+      
+      DurschnittsAbbauRate = (game_map[f].halite_amount *( 1-0.75**(i-field[f][0]))-kosten)/i
       DurschnittsAbbauRaten.append(DurschnittsAbbauRate)
     index = np.argmax(DurschnittsAbbauRaten)
+    platz_im_schiff_verbleibend = 1000-ship.halite_amount
+    halite_am_spot = game_map[f].halite_amount
+    if halite_am_spot > platz_im_schiff_verbleibend:
+      turns_bis_voll = int(np.log(1-(platz_im_schiff_verbleibend/halite_am_spot)) / np.log(0.75))
+      if turns_bis_voll < index:
+        index = turns_bis_voll
     field[f] =(field[f][0],field[f][1],index-field[f][0],DurschnittsAbbauRaten[index],path)
-  destination = max(field, key=field[3].get)
+  highestValue = 0
+  destination = None
+  for f in field:
+    if field[f][3] >= highestValue and f not in invalidSpots:
+      highestValue = field[f][3]
+      destination = f
+  logging.info(destination)
+  #destination = max(field, key=field[3].get)
   ship.MiningRounds = field[destination][2]
-  direction = game_map.naive_navigate(ship, field[destination][4])[0]
+  if len(field[destination][4]) == 0:
+    direction = Direction.Still
+  elif len(field[destination][4]) == 1:
+    direction = game_map.get_unsafe_moves(ship.position, destination)[0]
+  else:
+    direction = game_map.get_unsafe_moves(ship.position, field[destination][4][-2])[0]
+    logging.info(field[destination][4][-2])
+  logging.info(direction)
   return direction
 
   
@@ -358,16 +391,23 @@ def GetDijkstraPath(field, destination):
   return path
 
 
-def GetPointsInDistance(game_map, distance, candidates,invalidSpots,visitedSpots=[]): #candidates ist ne liste die am anfang die startposition haben sollte
-  if game_map.calculate_distance(visitedSpots[0], visitedSpots[-1]) == distance:
-    return visitedSpots
-  for pos in candidates:
-    visitedSpots.append(pos)
-    cardinals = pos.get_surrounding_cardinals()
-    for c in cardinals:
-      if c not in invalidSpots and c not in candidates and c not in visitedSpots:
-        candidates.append(c)
-  GetPointsInDistance(game_map, distance, candidates,invalidSpots,visitedSpots)
+def GetPointsInDistance(game_map, distance, position,invalidSpots):
+  distance
+  positions ={}
+  #if position not in invalidSpots:
+  positions[position] = (0,None)
+  for dist in range(1,distance):
+    for i in range(dist):
+      poss =[]
+      poss.append(game_map.normalize(Position(position.x+i,position.y-dist+i)))
+      poss.append(game_map.normalize(Position(position.x+dist-i,position.y+i)))
+      poss.append(game_map.normalize(Position(position.x-i,position.y+dist-i)))
+      poss.append(game_map.normalize(Position(position.x-dist+i,position.y-i)))
+      for p in poss:
+        if p not in invalidSpots and p not in positions:
+          positions[p] = (np.inf,None)
+  return positions
+
 
 
     
