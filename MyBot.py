@@ -63,16 +63,17 @@ def whatDo(ship, blocked = []):
     if do.position == ship.position:
       departure = True
 
-  logging.info("Ship ID = " + str(ship.id) + ", Mining Counter = " + str(ship.MiningCounter))
+  #logging.info("Ship ID = " + str(ship.id) + ", Mining Counter = " + str(ship.MiningCounter))
 
   if departure:
     ship.Priority = 3
     ship.ReturnHome = False
   #####Checken ob das klar geht mit neuer collision wenn schiffe leer sind
   if ship.halite_amount < np.ceil(game_map[ship.position].halite_amount/10):  # Out of Fuel
-    ship.Priority = 4
+    #ship.Priority = 4
     #hf.SetWishPos(ship.id,game_map.normalize(ship.position), collisionMap)
     wishPosition = game_map.normalize(ship.position)
+    wishDirection = Direction.Still
   elif RushHome:
     # find closest Spot to home:
     home = ship.Home
@@ -81,6 +82,7 @@ def whatDo(ship, blocked = []):
     else: # not in surrounding cardinals => navigate to BestRetSpot
       ship.Priority = 2
       wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, home, blocked )
+      #wishDirection = hf.GetDirectionToDestination(game_map, ship, home,blocked+EnemyFields)
       #hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
       wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
   elif ship.Expand == True: #Expanding
@@ -91,7 +93,8 @@ def whatDo(ship, blocked = []):
       global DropOffPending 
       DropOffPending = True
     else:
-      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
+      #wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position, NextExpansion,blocked+EnemyFields )
+      wishDirection = hf.GetDirectionToDestination(game_map, ship, NextExpansion,blocked+EnemyFields)
       #hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
       wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
   elif ship.Destination is not None: ##muss noch allgemeiner gemacht werden 4000 gerade nur damit die icht zu früh losfahren
@@ -103,13 +106,16 @@ def whatDo(ship, blocked = []):
       wishPosition = ship.position
     else:
       ship.Priority = 1
-      wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Destination,blocked+EnemyFields )
+      #wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Destination,blocked+EnemyFields )
+      wishDirection = hf.GetDirectionToDestination(game_map, ship, ship.Destination,blocked+EnemyFields)
+
       #hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
       wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
 
   elif ship.halite_amount >= 950 or ship.ReturnHome:  # return home!
-    ship.Priority = 1
-    wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Home,blocked+EnemyFields )
+    #ship.Priority = 1
+    #wishDirection = hf.FindCheapestShortestRoute( game_map, ship.position,ship.Home,blocked+EnemyFields )
+    wishDirection = hf.GetDirectionToDestination(game_map, ship, ship.Home,blocked+EnemyFields)
     #hf.SetWishPos(ship.id,game_map.normalize(ship.position.directional_offset(wishDirection)), collisionMap)
     wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
     ship.ReturnHome = True
@@ -124,8 +130,8 @@ def whatDo(ship, blocked = []):
     wishPosition = ship.position
     ship.Priority = 3
   else:
-    wishDirection=hf.FindEfficientSpot(game_map,ship,6,blocked+EnemyFields)
-    logging.info(wishDirection)
+    wishDirection=hf.FindEfficientSpot(game_map,ship,8,blocked+EnemyFields)
+    #logging.info(wishDirection)
     wishPosition = game_map.normalize(ship.position.directional_offset(wishDirection))
   # else: # find closest valid spot
   #   logging.info("Inside Else")
@@ -216,8 +222,12 @@ while True:
         ExpansionShip.Expand = False
     
   sortedShips = hf.SortShipsByDistance(game_map,me.get_ships(),me.shipyard.position)
+  
   for ship in sortedShips:
+    logging.info(ship.id)
     collisionList.append(whatDo(ship,collisionList))
+    logging.info(ship.Direction)
+  logging.info(collisionList)
   # conflicts = {}
   # counter = 10
   # while hf.ResolveCollisionMap(collisionMap,conflicts, me.get_ships()):
@@ -231,6 +241,9 @@ while True:
     
     if ship.Direction != None:
       command_queue.append(ship.move(ship.Direction))
+    else:
+        logging.info("HOW THE FUCK DID WE GET HERE")
+
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.

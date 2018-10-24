@@ -266,11 +266,15 @@ def closestShipToPosition(game_map, ships, position,count = 1, ignoreShips = [])
 def SortShipsByDistance(game_map, ships, position):
   def distance(ship):
     #bei schiffen gleicher distanz werden zu erst die schiffe weiter links genommen
+    value = 0
     if ship.halite_amount * 10 < game_map[ship.position].halite_amount:
-      return -1
-    return game_map.calculate_distance(ship.position,position)+(ship.position.x/100)
+      value= -1
+    else:
+      value = game_map.calculate_distance(ship.position,ship.Home)+(ship.position.x/100)
+    logging.info("ship id: " + str(ship.id) + " hat value: " + str(value))
+    return value
   ships.sort(key=distance)
-
+  logging.info(ships)
   return ships
 
 
@@ -313,9 +317,6 @@ def GetShipBellMap( ships, game_map, maxDist=5, RepellantFactor=1 ):
 def DijkstraField( game_map, shipPos, distance, invalidSpots):
   field = {}
   candidates = GetPointsInDistance(game_map, distance,shipPos,invalidSpots)
-  # candidates[shipPos] = (0,None)
-  # for c in candidates: #range(1,len(candidates)):
-  #   candidates[c] =(np.inf,None)
   while len(candidates) > 0:
     #currentPosition = min(candidates, key=getTuple)
     lowestValue = np.inf
@@ -337,21 +338,66 @@ def DijkstraField( game_map, shipPos, distance, invalidSpots):
           candidates[cardinal] = (currentTuple[0] + 1,currentPosition)
   return field
 
+
+def closestReachablePositionToPosition(game_map, field, position):
+  closestPosition = None
+  closestDistance = np.inf
+  for f in field:
+    currentDistance = game_map.calculate_distance(f,position)
+    if currentDistance < closestDistance and field[f][1] is not None:
+      closestDistance = currentDistance
+      closestPosition = f
+  return closestPosition
+
+
+def GetDirectionToDestination(game_map,ship,destination,invalidSpots):
+  distance = game_map.calculate_distance(ship.position, destination)
+  field = DijkstraField(game_map,ship.position,distance+2,invalidSpots)
+  currentPosition = destination
+  logging.info(currentPosition)
+  logging.info(field)
+  if currentPosition not in field: #already blocked
+    currentPosition = closestReachablePositionToPosition(game_map,field,destination)
+  if field[currentPosition][1] is None: #unreachable
+    currentPosition = closestReachablePositionToPosition(game_map,field,destination)
+
+  logging.info(currentPosition)
+  logging.info(ship.position)
+  logging.info(destination)
+  if currentPosition is None:
+    logging.info("No where to go. gg")
+    return Direction.Still
+  if currentPosition==ship.position:
+    if ship.position in invalidSpots:
+      ca = ship.position.get_surrounding_cardinals()
+      for c in ca:
+        if c not in invalidSpots:
+          return game_map.get_unsafe_moves(ship.position, c)[0]
+        
+    else:
+      return Direction.Still
+  while field[currentPosition][1]!=ship.position:
+    currentPosition = field[currentPosition][1]
+  return game_map.get_unsafe_moves(ship.position, currentPosition)[0]
+
+
 def FindEfficientSpot(game_map,ship,distance,invalidSpots):
   field = DijkstraField(game_map,ship.position,distance,invalidSpots)
   for f in field:
     path = GetDijkstraPath(field,f)
     #kosten zum punkt
-    kosten = -1
+    kosten = 0
     for position in path:
-      if kosten == -1: #destination kosten muss man nicht bezahlen
-        kosten = 0
-        continue
+      # if kosten == -1: #destination kosten muss man nicht bezahlen
+      #   kosten = 0
+      #   continue
       kosten += game_map[position].halite_amount
     DurschnittsAbbauRaten=[]
+
+    homeDistance = game_map.calculate_distance(f, ship.Home)
     for i in range(1,10):
       
-      DurschnittsAbbauRate = (game_map[f].halite_amount *( 1-0.75**(i-field[f][0]))-kosten)/i
+      DurschnittsAbbauRate = (game_map[f].halite_amount *( 1-0.75**(i-field[f][0]))-kosten)/(i+homeDistance)
       DurschnittsAbbauRaten.append(DurschnittsAbbauRate)
     index = np.argmax(DurschnittsAbbauRaten)
     platz_im_schiff_verbleibend = 1000-ship.halite_amount
@@ -361,13 +407,16 @@ def FindEfficientSpot(game_map,ship,distance,invalidSpots):
       if turns_bis_voll < index:
         index = turns_bis_voll
     field[f] =(field[f][0],field[f][1],index-field[f][0],DurschnittsAbbauRaten[index],path)
-  highestValue = 0
+  highestValue = -np.inf
   destination = None
   for f in field:
     if field[f][3] >= highestValue and f not in invalidSpots:
       highestValue = field[f][3]
       destination = f
   logging.info(destination)
+  if destination is None:
+    logging.info(field)
+    logging.info(invalidSpots)
   if destination is None:
     return Direction.Still
   #destination = max(field, key=field[3].get)
@@ -378,8 +427,8 @@ def FindEfficientSpot(game_map,ship,distance,invalidSpots):
     direction = game_map.get_unsafe_moves(ship.position, destination)[0]
   else:
     direction = game_map.get_unsafe_moves(ship.position, field[destination][4][-2])[0]
-    logging.info(field[destination][4][-2])
-  logging.info(direction)
+    #logging.info(field[destination][4][-2])
+  #logging.info(direction)
   return direction
 
   
