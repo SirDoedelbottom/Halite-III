@@ -23,20 +23,16 @@ reservedHalite = 0
 DropOffPending = False
 NextExpansion = None
 ShipInfos = {}
+lastExpansion = 0
 # ShipBellMap = hf.GetShipBellMap( game.me.get_ships(), game.game_map )
 
 
 logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
 
 """ <<<Game Loop>>> """
-def ExpansionNeeded():
-  if game.turn_number > 50 and len(me.get_ships()) > 10 and len(me.get_dropoffs()) < 1:
-    return True
-  else:
-    return False
 
 def EvaluatePoint(position):
-  maxDist = 5
+  maxDist = 6
   positionValue = game_map[position].halite_amount
   for dist in range(1,maxDist):
     for i in range(dist):
@@ -204,21 +200,35 @@ while True:
   if (constants.MAX_TURNS - game.turn_number) - (MaxDist+MaxDistShips) <= 0: # safty Distance 
     RushHome = True
 
-  if ExpansionNeeded():
-    ExpansionShip = hf.GetExpandingShip(me.get_ships())
-    #logging.info("Expansion Ship is : " + str(ExpansionShip))
-    #logging.info("ShipInfos : " + str(ShipInfos))
-    if ExpansionShip is None:
-      for ship in me.get_ships():
-        ship.Destination = None
-      reservedHalite = 4000
+
+  if lastExpansion + 20 < game.turn_number and constants.MAX_TURNS - game.turn_number > 50:
+    averageHomeDistance = 0
+    for ship in me.get_ships():
+      averageHomeDistance += game_map.calculate_distance(ship.position, ship.Home)
+    if len(me.get_ships()) > 0:
+      averageHomeDistance= averageHomeDistance/ len(me.get_ships())
+    ExpansionNeeded = False
+    if averageHomeDistance > 10 :
       emap = EvaluateMap()
-      NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
-      ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
-      ExpansionShip.Expand = True
-    else:
-      if game_map[NextExpansion].has_structure:
-        ExpansionShip.Expand = False
+      gamePercentage = .75+(game.turn_number / constants.MAX_TURNS)/2
+      if np.amax(emap) * gamePercentage > 8000:
+        ExpansionNeeded = True
+  
+    if ExpansionNeeded:
+      ExpansionShip = hf.GetExpandingShip(me.get_ships())
+      #logging.info("Expansion Ship is : " + str(ExpansionShip))
+      #logging.info("ShipInfos : " + str(ShipInfos))
+      if ExpansionShip is None:
+        for ship in me.get_ships():
+          ship.Destination = None
+        reservedHalite = 4000
+        emap = EvaluateMap()
+        NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
+        ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
+        ExpansionShip.Expand = True
+      else:
+        if game_map[NextExpansion].has_structure:
+          ExpansionShip.Expand = False
     
   sortedShips = hf.SortShipsByDistance(game_map,me.get_ships(),me.shipyard.position)
   
@@ -240,17 +250,26 @@ while True:
     else:
         logging.info("HOW THE FUCK DID WE GET HERE")
 
-
+  maximum = 0
+  for p in game.players:
+    if p != me.id:
+      shipCount = len(game.players[p].get_ships())
+      if shipCount > maximum:
+        maximum = shipCount
+  if maximum < 30:
+    maximum = 30
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-  if game.turn_number <= constants.MAX_TURNS*4/7 and me.halite_amount - reservedHalite >= constants.SHIP_COST and me.shipyard.position not in collisionList: #collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
+  if len(me.get_ships())  <= maximum * 1.1 and game.turn_number <= constants.MAX_TURNS*4/7 and me.halite_amount - reservedHalite >= constants.SHIP_COST and me.shipyard.position not in collisionList: #collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
     command_queue.append(me.shipyard.spawn())
   if DropOffPending == True:
+    lastExpansion = game.turn_number
     ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,[ExpansionShip])
     i = 0
     for ship in ExpansionGroup:
-      ship.Destination = NextExpansion.get_surrounding_cardinals()[i] #get surrounding cardinals
-      i+=1
+      if ship is not None:
+        ship.Destination = NextExpansion.get_surrounding_cardinals()[i] #get surrounding cardinals
+        i+=1
     reservedHalite -= 4000
     DropOffPending = False
   ShipInfos = hf.SaveShipInfos(ShipInfos, me.get_ships())
