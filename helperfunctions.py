@@ -96,7 +96,6 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots
     if Found == True:
       return BestSpot
   if not BestSpot:
-    logging.info("No Spot found: calling myself again")
     return FindClosestValidSpot(game_map, ShipPos, max_dist+3, ShipBellMap, InvalidSpots, threshold*0.75)
   return BestSpot
   
@@ -269,12 +268,12 @@ def SortShipsByDistance(game_map, ships, position):
     value = 0
     if ship.halite_amount * 10 < game_map[ship.position].halite_amount:
       value= -1
+    elif ship.Expand == True:
+      value= -0.5
     else:
       value = game_map.calculate_distance(ship.position,ship.Home)+(ship.position.x/100)
-    logging.info("ship id: " + str(ship.id) + " hat value: " + str(value))
     return value
   ships.sort(key=distance)
-  logging.info(ships)
   return ships
 
 
@@ -325,8 +324,6 @@ def DijkstraField( game_map, shipPos, distance, invalidSpots):
       if candidates[c][0] <= lowestValue:
         lowestValue = candidates[c][0]
         currentPosition = c
-    # logging.info(currentPosition)
-    # logging.info(candidates)
     currentTuple = candidates.pop(currentPosition)
     
     field[currentPosition] = (currentTuple[0], currentTuple[1])
@@ -355,23 +352,15 @@ def GetDirectionToDestination(game_map,ship,destination,invalidSpots):
   distance = game_map.calculate_distance(ship.position, destination)
   field = DijkstraField(game_map,ship.position,distance+1,invalidSpots)
   currentPosition = destination
-  logging.info(currentPosition)
-  logging.info(field)
   if currentPosition is None:
-    logging.info("No where to go. gg")
     return Direction.Still
 
   if currentPosition not in field: #already blocked
     currentPosition = closestReachablePositionToPosition(game_map,field,destination)
-  logging.info(currentPosition)
   if field[currentPosition][1] is None: #unreachable
     currentPosition = closestReachablePositionToPosition(game_map,field,destination)
 
-  logging.info(currentPosition)
-  logging.info(ship.position)
-  logging.info(destination)
   if currentPosition is None:
-    logging.info("No where to go. gg")
     return Direction.Still
   if currentPosition==ship.position:
     if ship.position in invalidSpots:
@@ -420,10 +409,6 @@ def FindEfficientSpot(game_map,ship,distance,invalidSpots):
     if field[f][3] >= highestValue and f not in invalidSpots:
       highestValue = field[f][3]
       destination = f
-  logging.info(destination)
-  if destination is None:
-    logging.info(field)
-    logging.info(invalidSpots)
   if destination is None:
     return Direction.Still
   #destination = max(field, key=field[3].get)
@@ -434,8 +419,68 @@ def FindEfficientSpot(game_map,ship,distance,invalidSpots):
     direction = game_map.get_unsafe_moves(ship.position, destination)[0]
   else:
     direction = game_map.get_unsafe_moves(ship.position, field[destination][4][-2])[0]
-    #logging.info(field[destination][4][-2])
-  #logging.info(direction)
+  return direction
+
+def GetUnsafePathCost(game_map,shipPos,destination):
+  cost = 0
+  currentPos = shipPos
+  while currentPos != destination:
+    cost += game_map[currentPos].halite_amount/10
+    currentPos = game_map.normalize(currentPos.directional_offset(game_map.get_unsafe_moves(currentPos, destination)[0]))
+  return cost
+
+def AStarFindEfficientSpot(game_map,ship,distance,invalidSpots):
+  invalidSpotsInDistance = IgnoreSpotsAfterDistance(game_map,ship.position,6,invalidSpots)
+  field = GetPointsInDistance(game_map, distance, ship.position,invalidSpotsInDistance,ship.position)
+  if ship.position in invalidSpotsInDistance:
+    del field[ship.position]
+  for f in field:
+    # halite_am_spot = -100
+    # if game_map[f].is_occupied != True or game_map[f].ship == ship:
+    #   halite_am_spot = game_map[f].halite_amount
+    #   if halite_am_spot < 100:
+    #     halite_am_spot = -100
+    
+    halite_am_spot = game_map[f].halite_amount
+    DurschnittsAbbauRaten=[]
+    index = 0
+    if game_map[f].is_occupied and game_map[f].ship != ship:
+      DurschnittsAbbauRaten.append(-100)
+    else:
+      homeDistance = game_map.calculate_distance(f, ship.Home)
+      kosten = GetUnsafePathCost(game_map, ship.position,f) + GetUnsafePathCost(game_map, f,ship.Home)
+      for i in range(1,10):
+        DurschnittsAbbauRate = (halite_am_spot *( 1-0.75**(i-field[f][2]))-kosten)/(i+homeDistance)
+        DurschnittsAbbauRaten.append(DurschnittsAbbauRate)
+      index = np.argmax(DurschnittsAbbauRaten)
+      #ist das schiff voll bevor max erreicht wird
+      platz_im_schiff_verbleibend = 1000-ship.halite_amount
+      halite_am_spot = game_map[f].halite_amount
+      if halite_am_spot > platz_im_schiff_verbleibend:
+        turns_bis_voll = int(np.log(1-(platz_im_schiff_verbleibend/halite_am_spot)) / np.log(0.75))
+        if turns_bis_voll < index:
+          index = turns_bis_voll
+      #field[f] =(field[f][0],field[f][1],index-field[f][0],DurschnittsAbbauRaten[index],path)
+    field[f] = DurschnittsAbbauRaten[index]#,index
+  highestValue = -np.inf
+  destination = None
+  for f in field:
+    if field[f] >= highestValue and f not in invalidSpotsInDistance:
+      highestValue = field[f]
+      destination = f
+  if destination is None:
+    return Direction.Still
+  #destination = max(field, key=field[3].get)
+  #ship.MiningRounds = field[destination][2]
+
+  # if len(field[destination][4]) == 0:
+  #   direction = Direction.Still
+  # elif len(field[destination][4]) == 1:
+  #   direction = game_map.get_unsafe_moves(ship.position, destination)[0]
+  # else:
+  #   direction = game_map.get_unsafe_moves(ship.position, field[destination][4][-2])[0]
+  
+  direction = GetAStarPath(game_map,ship.position,destination,invalidSpotsInDistance)
   return direction
 
   
@@ -451,11 +496,10 @@ def GetDijkstraPath(field, destination):
   return path
 
 
-def GetPointsInDistance(game_map, distance, position,invalidSpots):
-  distance
+def GetPointsInDistance(game_map, distance, position,invalidSpots,destination = None):
   positions ={}
   #if position not in invalidSpots:
-  positions[position] = (0,None)
+  positions[position] = (0,None,0)
   for dist in range(1,distance):
     for i in range(dist):
       poss =[]
@@ -465,9 +509,94 @@ def GetPointsInDistance(game_map, distance, position,invalidSpots):
       poss.append(game_map.normalize(Position(position.x-dist+i,position.y-i)))
       for p in poss:
         if p not in invalidSpots and p not in positions:
-          positions[p] = (np.inf,None)
+          if destination is not None:
+            h = game_map.calculate_distance(p,destination)
+            positions[p] = (np.inf,None,h)
+          else:
+            positions[p] = (np.inf,None)
   return positions
 
+def GetAStarPath( game_map, shipPos, destination, invalidSpots):
+  invalidSpotsInDistance = IgnoreSpotsAfterDistance(game_map, shipPos, 6, invalidSpots)
+  distance = game_map.calculate_distance(shipPos,destination)
+  candidates = GetPointsInDistance(game_map, distance + 1,shipPos,invalidSpotsInDistance,destination)
+
+  #AStarClosesReachablePosition(game_map, field, position)
+  openDict = {}
+  closedDict = {}
+  openDict[shipPos] = candidates[shipPos]
+
+  while len(openDict) > 0:
+    #currentPosition = min(candidates, key=getTuple)
+    lowestValue = np.inf
+    currentPosition = None
+    for c in openDict:
+      if openDict[c][0] + openDict[c][2] <= lowestValue:
+        lowestValue = openDict[c][0] + openDict[c][2]
+        currentPosition = c
+    currentTuple = openDict.pop(currentPosition)
+    closedDict[currentPosition] = currentTuple
+    if currentPosition == destination:
+      path = PathFromClosedDict(destination,closedDict)
+      if len(path)>1:
+        direction = game_map.get_unsafe_moves(shipPos, path[-2])[0]
+      else:
+        direction = Direction.Still #game_map.get_unsafe_moves(shipPos, path[0])[0]
+      return direction
+
+
+    cardinals = currentPosition.get_surrounding_cardinals()
+    for cardinal in cardinals:
+      cardinal = game_map.normalize(cardinal)
+      if cardinal in candidates and cardinal not in closedDict:
+        if cardinal in openDict:
+          if(currentTuple[0]+1 < openDict[cardinal][0]):
+            openDict[cardinal] = (currentTuple[0] + 1,currentPosition,candidates[cardinal][2] )
+        else:
+          openDict[cardinal] = (currentTuple[0] + 1,currentPosition,candidates[cardinal][2] )
+
+  movePls = False
+  if shipPos in invalidSpotsInDistance:
+    movePls = True
+  newDestination = AStarClosesReachablePosition(game_map, closedDict, destination,movePls)
+  path = PathFromClosedDict(newDestination,closedDict)
+  if len(path)>1:
+    direction = game_map.get_unsafe_moves(shipPos, path[-2])[0]
+  else:
+    direction = direction = Direction.Still#game_map.get_unsafe_moves(shipPos, path[0])[0]
+  return direction
+
+def IgnoreSpotsAfterDistance(game_map,shipPos,distance,invalidSpots):
+  invalidSpotsInDistance = invalidSpots.copy()
+  for s in invalidSpots:
+    if game_map.calculate_distance(shipPos,s) > distance:
+      invalidSpotsInDistance.remove(s)
+  return invalidSpotsInDistance
+
+
+def AStarClosesReachablePosition(game_map, closedDict, position, movePls):
+  closestPosition = None
+  closestDistance = np.inf
+  for f in closedDict:
+    if movePls and f == position:
+      continue
+    currentDistance = game_map.calculate_distance(f,position)
+    if currentDistance < closestDistance:
+      closestDistance = currentDistance
+      closestPosition = f
+  return closestPosition
+
+
+def PathFromClosedDict(destination,closedDict):
+  spot = closedDict[destination]
+  path = [destination]
+  while spot is not None:
+    if spot[1] in closedDict:
+      path.append(spot[1])
+      spot = closedDict[spot[1]]
+    else:
+      spot = None
+  return path
 
 
     
