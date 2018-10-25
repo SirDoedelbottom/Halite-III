@@ -42,11 +42,15 @@ def EvaluatePoint(position):
       positionValue+= int(game_map[game_map.normalize(Position(position.x-dist+i,position.y-i))].halite_amount * (1 - i/(dist+1)))
   return positionValue
 
-def EvaluateMap():
+def EvaluateMap(ships):
   evaluatedMap = np.zeros([game_map.width,game_map.height])
-  for x in range(game_map.width):
-    for y in range(game_map.height):
-      evaluatedMap[x,y] = EvaluatePoint(Position(x,y))
+  for s in ships:
+    x = s.position.x
+    y = s.position.y
+
+  # for x in range(game_map.width):
+  #   for y in range(game_map.height):
+    evaluatedMap[x,y] = EvaluatePoint(Position(x,y))
   return evaluatedMap
 
   
@@ -201,17 +205,18 @@ while True:
     RushHome = True
 
 
-  if lastExpansion + 20 < game.turn_number and constants.MAX_TURNS - game.turn_number > 50:
+  if lastExpansion + 50 < game.turn_number and constants.MAX_TURNS - game.turn_number > 50:
     averageHomeDistance = 0
     for ship in me.get_ships():
       averageHomeDistance += game_map.calculate_distance(ship.position, ship.Home)
     if len(me.get_ships()) > 0:
       averageHomeDistance= averageHomeDistance/ len(me.get_ships())
     ExpansionNeeded = False
-    if averageHomeDistance > 10 :
-      emap = EvaluateMap()
+    emap = []
+    if averageHomeDistance > 6 :
+      emap = EvaluateMap(me.get_ships())
       gamePercentage = .75+(game.turn_number / constants.MAX_TURNS)/2
-      if np.amax(emap) * gamePercentage > 8000:
+      if np.amax(emap) * gamePercentage > 5000: #testing
         ExpansionNeeded = True
   
     if ExpansionNeeded:
@@ -222,7 +227,7 @@ while True:
         for ship in me.get_ships():
           ship.Destination = None
         reservedHalite = 4000
-        emap = EvaluateMap()
+        #emap = EvaluateMap(me.get_ships())
         NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
         ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
         ExpansionShip.Expand = True

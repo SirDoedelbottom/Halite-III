@@ -457,7 +457,7 @@ def AStarFindEfficientSpot(game_map,ship,distance,invalidSpots):
       DurschnittsAbbauRaten.append(-100)
     else:
       homeDistance = game_map.calculate_distance(f, ship.Home)
-      kosten = GetUnsafePathCost(game_map, ship.position,f) + GetUnsafePathCost(game_map, f,ship.Home)
+      kosten = (GetUnsafePathCost(game_map, ship.position,f) + GetUnsafePathCost(game_map, f,ship.Home)) * 2
       for i in range(1,10):
         DurschnittsAbbauRate = (halite_am_spot *( 1-0.75**(i-field[f][2]))-kosten)/(i+homeDistance)
         DurschnittsAbbauRaten.append(DurschnittsAbbauRate)
