@@ -215,12 +215,7 @@ while True:
       emap = EvaluateMap()
       NextExpansion = hf.GetPotentialExpansions(game_map,emap,me.shipyard.position)[0]
       ExpansionShip=hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion)[0]
-      ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,[ExpansionShip])
       ExpansionShip.Expand = True
-      i = 0
-      for ship in ExpansionGroup:
-        ship.Destination = NextExpansion.get_surrounding_cardinals()[i] #get surrounding cardinals
-        i+=1
     else:
       if game_map[NextExpansion].has_structure:
         ExpansionShip.Expand = False
@@ -248,9 +243,14 @@ while True:
 
   # If the game is in the first 200 turns and you have enough halite, spawn a ship.
   # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-  if game.turn_number <= constants.MAX_TURNS*1/2 and me.halite_amount - reservedHalite >= constants.SHIP_COST and me.shipyard.position not in collisionList: #collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
+  if game.turn_number <= constants.MAX_TURNS*4/7 and me.halite_amount - reservedHalite >= constants.SHIP_COST and me.shipyard.position not in collisionList: #collisionMap[me.shipyard.position.x][me.shipyard.position.y][0]==-1:
     command_queue.append(me.shipyard.spawn())
   if DropOffPending == True:
+    ExpansionGroup = hf.closestShipToPosition(game_map,me.get_ships(),NextExpansion,4,[ExpansionShip])
+    i = 0
+    for ship in ExpansionGroup:
+      ship.Destination = NextExpansion.get_surrounding_cardinals()[i] #get surrounding cardinals
+      i+=1
     reservedHalite -= 4000
     DropOffPending = False
   ShipInfos = hf.SaveShipInfos(ShipInfos, me.get_ships())

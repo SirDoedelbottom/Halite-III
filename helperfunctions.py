@@ -101,14 +101,23 @@ def FindClosestValidSpot( game_map, ShipPos, max_dist, ShipBellMap, InvalidSpots
   
 def getAllEnemyFields( game ):
   EnemyFields = []
+  myStructurePositions = [game.me.shipyard.position]
+  dropoffs = game.me.get_dropoffs()
+  for d in dropoffs:
+    myStructurePositions.append(d.position)
   for Enemy in game.players:
     if Enemy == game.me.id:
       continue
-    #EnemyFields.extend(game.players[Enemy].get_ships())
     for ship in game.players[Enemy].get_ships():
-       #EnemyFields.extend([ship.position]+ship.position.get_surrounding_cardinals())
-       EnemyFields.append(ship.position)
+      cardinals = ship.position.get_surrounding_cardinals()
+      EnemyFields.append(ship.position)
+      for c in cardinals:
+        c = game.game_map.normalize(c)
+        EnemyFields.append(c)
   EnemyFields = list(set(EnemyFields))
+  for s in myStructurePositions:
+    if s in EnemyFields:
+      EnemyFields.remove(s)
   return EnemyFields
 
 def FindCheapestShortestRoute( game_map, ShipPos, DestPos, InvalidSpots = [] ):
@@ -555,10 +564,12 @@ def GetAStarPath( game_map, shipPos, destination, invalidSpots):
         else:
           openDict[cardinal] = (currentTuple[0] + 1,currentPosition,candidates[cardinal][2] )
 
-  movePls = False
+  movePls = None
   if shipPos in invalidSpotsInDistance:
-    movePls = True
+    movePls = shipPos
   newDestination = AStarClosesReachablePosition(game_map, closedDict, destination,movePls)
+  if newDestination is None:
+    return Direction.Still
   path = PathFromClosedDict(newDestination,closedDict)
   if len(path)>1:
     direction = game_map.get_unsafe_moves(shipPos, path[-2])[0]
@@ -574,12 +585,13 @@ def IgnoreSpotsAfterDistance(game_map,shipPos,distance,invalidSpots):
   return invalidSpotsInDistance
 
 
-def AStarClosesReachablePosition(game_map, closedDict, position, movePls):
+def AStarClosesReachablePosition(game_map, closedDict, position, shipPos = None):
   closestPosition = None
   closestDistance = np.inf
   for f in closedDict:
-    if movePls and f == position:
-      continue
+    if shipPos is not None:
+      if f == shipPos:
+        continue
     currentDistance = game_map.calculate_distance(f,position)
     if currentDistance < closestDistance:
       closestDistance = currentDistance
