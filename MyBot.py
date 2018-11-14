@@ -169,7 +169,7 @@ while True:
   ShipDistList = []
   EnemyFields = hf.getAllEnemyFields( game )
   hf.LoadShipInfos(ShipInfos, me.get_ships())
-  ShipBellMap = hf.GetShipBellMap( me.get_ships(), game_map )
+  # ShipBellMap = hf.GetShipBellMap( me.get_ships(), game_map )
   collisionList = []
 
   for ship in me.get_ships():
